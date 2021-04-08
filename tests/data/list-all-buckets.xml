@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+  <ListAllMyBucketsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+    <Owner>
+      <ID>6174283</ID>
+      <DisplayName>6174283</DisplayName>
+    </Owner>
+    <Buckets>
+      <Bucket>
+        <Name>static-images</Name>
+        <CreationDate>2017-06-23T18:37:48.157Z</CreationDate>
+      </Bucket>
+    </Buckets>
+    <Buckets>
+      <Bucket>
+        <Name>log-files</Name>
+        <CreationDate>2017-06-23T18:37:48.157Z</CreationDate>
+      </Bucket>
+    </Buckets>
+  </ListAllMyBucketsResult>

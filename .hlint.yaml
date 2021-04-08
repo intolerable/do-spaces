@@ -1,0 +1,8 @@
+- group: { name: dollar, enabled: true }
+- group: { name: generalise, enabled: true }
+- ignore: { name: Use newtype instead of data }
+- ignore: { name: Move brackets to avoid $ }
+- ignore: { name: Use || }
+- ignore: { name: Use && }
+- ignore: { name: Redundant multi-way if }
+- warn: { name: Redundant do }

@@ -1,0 +1,7 @@
+dist-newstyle/**
+.direnv/**
+*.prof
+*.ps
+*.hp
+*.aux
+TODO.org
