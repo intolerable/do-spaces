@@ -145,8 +145,7 @@ listBucketResponse = do
             it "parses ListBucketResponse correctly" $ do
                 bucketContents
                     `shouldBe` ListBucketResponse
-                    { -- owner   = Owner (ID 6174283) (ID 6174283)
-                      bucket      = Bucket "static-images"
+                    { bucket      = Bucket "static-images"
                     , prefix      = Nothing
                     , marker      = Nothing
                     , nextMarker  = Nothing
