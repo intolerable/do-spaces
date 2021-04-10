@@ -7,7 +7,7 @@
 -- |
 module Network.DO.Spaces.Actions.DeleteBucket
     ( DeleteBucket(..)
-    , DeleteBucketResponse(..)
+    , DeleteBucketResponse
     ) where
 
 import           GHC.Generics            ( Generic )
@@ -25,8 +25,7 @@ data DeleteBucket = DeleteBucket
     }
     deriving ( Show, Eq, Generic )
 
-data DeleteBucketResponse = DeleteBucketResponse
-    deriving ( Show, Eq, Generic )
+type DeleteBucketResponse = ()
 
 instance Action DeleteBucket where
     type (SpacesResponse DeleteBucket) = DeleteBucketResponse
@@ -41,4 +40,4 @@ instance Action DeleteBucket where
         , ..
         }
 
-    consumeResponse _ = return DeleteBucketResponse
+    consumeResponse _ = return ()

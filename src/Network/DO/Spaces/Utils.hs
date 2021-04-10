@@ -14,6 +14,7 @@ module Network.DO.Spaces.Utils
     , ownerP
     , xmlDocCursor
     , xmlMaybeField
+    , showCannedACL
     ) where
 
 import           Conduit                  ( (.|), runConduit )
@@ -56,6 +57,11 @@ toLowerBS = C.pack . fmap toLower . C.unpack
 -- | Show a 'ByteString'
 bshow :: Show a => a -> ByteString
 bshow = C.pack . show
+
+showCannedACL :: IsString a => CannedACL -> a
+showCannedACL = \case
+    Private    -> "private"
+    PublicRead -> "public-read"
 
 xmlDocCursor :: MonadIO m => RawBody -> m X.Cursor
 xmlDocCursor raw = X.fromDocument

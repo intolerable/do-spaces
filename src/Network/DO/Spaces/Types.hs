@@ -13,22 +13,22 @@
 
 -- |
 module Network.DO.Spaces.Types
-    ( SpacesT(..)
+    ( -- * Spaces
+      SpacesT(..)
     , runSpacesT
     , Spaces(..)
     , MonadSpaces
+    , Action(..)
+    , CredentialSource(..)
+      -- * Making requests
+    , SpacesRequest(..)
+    , SpacesRequestBuilder(..)
+    , RawBody
+    , Method(..)
     , Region(..)
-    , Object(..)
-    , Bucket(..)
-    , BucketInfo(..)
-    , ID(..)
-    , DisplayName
     , AccessKey(..)
     , SecretKey(..)
-    , SpacesException(..)
     , Canonicalized(..)
-    , Method(..)
-    , SpacesRequest(..)
     , Computed(..)
     , StringToSign
     , Hashed
@@ -36,12 +36,17 @@ module Network.DO.Spaces.Types
     , Credentials
     , Authorization
     , uncompute
-    , SpacesRequestBuilder(..)
-    , Action(..)
+      -- * Buckets and Objects
+    , Object(..)
+    , Bucket(..)
+    , BucketInfo(..)
+    , ID(..)
+    , DisplayName
     , Owner(..)
-    , RawBody
-    , CredentialSource(..)
     , ObjectInfo(..)
+    , CannedACL(..)
+      -- * Exceptions
+    , SpacesException(..)
     ) where
 
 import           Conduit                     ( ConduitT, MonadUnliftIO )
@@ -226,6 +231,13 @@ type RawBody = ConduitT () ByteString IO ()
 data CredentialSource
     = InEnv (Maybe (Text, Text)) -- ^ 'AccessKey' and 'SecretKey' env vars
     | Explicit AccessKey SecretKey -- ^ Provide both
+
+-- | \"Canned\" access controls; Spaces doesn't support the full range offered
+-- by s3
+data CannedACL
+    = Private -- ^ No unauthenticated public access
+    | PublicRead -- ^ Unauthenticated public read access
+    deriving ( Eq, Show )
 
 -- | An exception generated within the 'Spaces' client
 data SpacesException
