@@ -16,6 +16,10 @@ import           Network.DO.Spaces.Actions.ListAllBuckets
                  ( ListAllBuckets
                  , ListAllBucketsResponse(..)
                  )
+import           Network.DO.Spaces.Actions.ListBucket
+                 ( ListBucket
+                 , ListBucketResponse(..)
+                 )
 import           Network.DO.Spaces.Request
 import           Network.DO.Spaces.Types
 import           Network.HTTP.Client.Conduit              ( Manager )
@@ -30,7 +34,7 @@ import           Test.Hspec
 
 {- HLINT ignore "Redundant do" -}
 main :: IO ()
-main = requests >> listAllBucketsResponse
+main = requests >> listAllBucketsResponse >> listBucketResponse
 
 requests :: IO ()
 requests = do
@@ -127,5 +131,45 @@ listAllBucketsResponse = do
                                                   bucketDate1
                                      , BucketInfo (Bucket "log-files")
                                                   bucketDate2
+                                     ]
+                    }
+
+listBucketResponse :: IO ()
+listBucketResponse = do
+    bucketContents <- withSourceFile "./tests/data/list-bucket.xml"
+                                     (consumeResponse @ListBucket)
+    objectDate1 <- iso8601ParseM @_ @UTCTime "2017-07-13T18:40:46.777Z"
+    objectDate2 <- iso8601ParseM @_ @UTCTime "2017-07-14T17:44:03.597Z"
+    hspec $ do
+        describe "ListBucket response" $ do
+            it "parses ListBucketResponse correctly" $ do
+                bucketContents
+                    `shouldBe` ListBucketResponse
+                    { -- owner   = Owner (ID 6174283) (ID 6174283)
+                      bucket      = Bucket "static-images"
+                    , prefix      = Nothing
+                    , marker      = Nothing
+                    , nextMarker  = Nothing
+                    , maxKeys     = 1000
+                    , isTruncated = False
+                    , objects     =
+                          S.fromList [ ObjectInfo
+                                       { object       = Object "example.txt"
+                                       , lastModified = objectDate1
+                                       , etag         =
+                                             "b3a92f49e7ae64acbf6b3e76f2040f5e"
+                                       , size         = 14
+                                       , owner        =
+                                             Owner (ID 6174283) (ID 6174283)
+                                       }
+                                     , ObjectInfo
+                                       { object       = Object "sammy.png"
+                                       , lastModified = objectDate2
+                                       , etag         =
+                                             "fb08934ef619f205f272b0adfd6c018c"
+                                       , size         = 35369
+                                       , owner        =
+                                             Owner (ID 6174283) (ID 6174283)
+                                       }
                                      ]
                     }

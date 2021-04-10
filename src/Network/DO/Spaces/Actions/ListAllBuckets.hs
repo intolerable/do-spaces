@@ -1,10 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StrictData #-}
-
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
@@ -12,8 +9,6 @@ module Network.DO.Spaces.Actions.ListAllBuckets
     ( ListAllBuckets(..)
     , ListAllBucketsResponse(..)
     ) where
-
-import           Conduit                 ( (.|), MonadIO(liftIO), runConduit )
 
 import           Data.Coerce             ( coerce )
 import           Data.Sequence           ( Seq )
@@ -25,16 +20,16 @@ import           Network.DO.Spaces.Types
                  ( Action(..)
                  , Bucket(Bucket)
                  , BucketInfo(..)
-                 , ID(..)
                  , Owner(..)
                  , SpacesRequestBuilder(..)
                  )
-import           Network.DO.Spaces.Utils ( xmlAttrError
-                                         , xmlDatetimeP
-                                         , xmlIntP
-                                         )
+import           Network.DO.Spaces.Utils
+                 ( ownerP
+                 , xmlAttrError
+                 , xmlDatetimeP
+                 , xmlDocCursor
+                 )
 
-import qualified Text.XML                as X
 import qualified Text.XML.Cursor         as X
 import           Text.XML.Cursor         ( ($/), (&/), (&|) )
 
@@ -59,26 +54,19 @@ instance Action ListAllBuckets where
         }
 
     consumeResponse raw = do
-        cursor <- X.fromDocument
-            <$> (liftIO . runConduit $ raw .| X.sinkDoc X.def)
+        cursor <- xmlDocCursor raw
         owner <- X.forceM (xmlAttrError "Owner")
             $ cursor $/ X.laxElement "Owner" &| ownerP
         buckets <- S.fromList
             <$> (sequence $ cursor $/ X.laxElement "Buckets" &| bucketsP)
         return ListAllBucketsResponse { .. }
       where
-        ownerP c = do
-            id' <- X.forceM (xmlAttrError "Owner ID")
-                $ c $/ X.laxElement "ID" &/ X.content &| xmlIntP @_ @ID
-            return Owner { displayName = id', id' }
-
         bucketsP c = X.forceM (xmlAttrError "Bucket")
             $ c $/ X.laxElement "Bucket" &| bucketInfoP
 
         bucketInfoP c = do
-            name <- coerce
-                <$> (X.force (xmlAttrError "Name")
-                     $ c $/ X.laxElement "Name" &/ X.content)
+            name <- X.force (xmlAttrError "Name")
+                $ c $/ X.laxElement "Name" &/ X.content &| coerce
             creationDate <- X.forceM (xmlAttrError "Creation date")
                 $ c $/ X.laxElement "CreationDate" &/ X.content
                 &| xmlDatetimeP

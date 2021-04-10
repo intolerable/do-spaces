@@ -14,6 +14,7 @@
 -- |
 module Network.DO.Spaces.Types
     ( SpacesT(..)
+    , runSpacesT
     , Spaces(..)
     , MonadSpaces
     , Region(..)
@@ -39,8 +40,8 @@ module Network.DO.Spaces.Types
     , Action(..)
     , Owner(..)
     , RawBody
-    , runSpacesT
     , CredentialSource(..)
+    , ObjectInfo(..)
     ) where
 
 import           Conduit                     ( ConduitT, MonadUnliftIO )
@@ -66,7 +67,7 @@ import           Network.HTTP.Client.Conduit
                  , Request
                  , RequestBody
                  )
-import           Network.HTTP.Types          ( Header )
+import           Network.HTTP.Types          ( Header, Query )
 
 newtype SpacesT a = SpacesT (ReaderT Spaces IO a)
     deriving ( Generic, Functor, Applicative, Monad, MonadIO, MonadThrow
@@ -110,7 +111,7 @@ data SpacesRequestBuilder = SpacesRequestBuilder
     , headers     :: [Header]
     , bucket      :: Maybe Bucket
     , object      :: Maybe Object
-    , queryString :: Maybe Text
+    , queryString :: Maybe Query
     }
     deriving ( Generic )
 
@@ -135,6 +136,15 @@ data BucketInfo = BucketInfo { name :: Bucket, creationDate :: UTCTime }
     deriving ( Show, Eq, Generic )
 
 newtype Object = Object { unObject :: Text }
+    deriving ( Show, Eq, Generic )
+
+data ObjectInfo = ObjectInfo
+    { object       :: Object --
+    , lastModified :: UTCTime
+    , etag         :: Text
+    , size         :: Int
+    , owner        :: Owner
+    }
     deriving ( Show, Eq, Generic )
 
 data Owner = Owner { id' :: ID, displayName :: DisplayName }
@@ -222,6 +232,7 @@ data SpacesException
     = InvalidRequest Text
     | InvalidXML Text
     | MissingKeys Text
+    | HTTPStatus Int Text
     deriving ( Show, Eq, Generic, Typeable )
 
 instance Exception SpacesException

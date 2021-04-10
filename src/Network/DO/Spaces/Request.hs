@@ -41,6 +41,7 @@ import           Network.HTTP.Client.Conduit
                  )
 import qualified Network.HTTP.Client.Conduit as H
 import           Network.HTTP.Types          ( Header )
+import qualified Network.HTTP.Types          as H
 
 -- | Extrac the 'Request' from a 'SpacesRequest' and set the requisite
 -- @Authorization@ header
@@ -68,13 +69,15 @@ newSpacesRequest SpacesRequestBuilder { .. } time = do
                   , "."
                   , "digitaloceanspaces.com/"
                   , maybe mempty (T.unpack . unObject) object
-                  , maybe mempty (("?" <>) . T.unpack) queryString
                   ]
-    payload <- bodyBS $fromMaybe (RequestBodyBS mempty) body
+    payload <- bodyBS $ fromMaybe (RequestBodyBS mempty) body
     let payloadHash      = hashHex payload
         payloadLen       = B.length payload
         newHeaders       = overrideReqHeaders req payloadLen payloadHash
-        request          = req { H.requestHeaders = headers <> newHeaders }
+        request          = req
+            { H.requestHeaders = headers <> newHeaders
+            , H.queryString    = maybe mempty (H.renderQuery True) queryString
+            }
         canonicalRequest = mkCanonicalized request payloadHash
     return $ SpacesRequest { method = reqMethod, headers = newHeaders, .. }
   where
