@@ -15,7 +15,6 @@ import           Data.Bool               ( bool )
 import           Data.ByteString         ( ByteString )
 import qualified Data.ByteString.Char8   as C
 import           Data.Coerce             ( coerce )
-import           Data.Maybe              ( listToMaybe )
 import           Data.Sequence           ( Seq )
 import qualified Data.Sequence           as S
 import           Data.Text               ( Text )
@@ -68,7 +67,10 @@ data ListBucketResponse = ListBucketResponse
       -- ^ The 'Object' that should be used as the 'marker' query param in
       -- subsequent requests
     , maxKeys     :: Int
+      -- ^ Maximum number of 'ObjectInfo's to include; based on request parameter
+      -- of the same name
     , isTruncated :: Bool
+      -- ^ Indicates whether the response contains all 'Object's
     , objects     :: Seq ObjectInfo
     }
     deriving ( Show, Eq, Generic )

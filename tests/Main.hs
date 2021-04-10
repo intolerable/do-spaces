@@ -4,14 +4,19 @@
 -- |
 module Main where
 
-import           Conduit                                  ( withSourceFile )
+import           Conduit                                     ( withSourceFile
+                                                             )
 
-import qualified Data.ByteString.Char8                    as C
-import           Data.Function                            ( (&) )
-import qualified Data.Sequence                            as S
-import           Data.Time                                ( UTCTime )
-import           Data.Time.Format.ISO8601                 ( iso8601ParseM )
+import qualified Data.ByteString.Char8                       as C
+import           Data.Function                               ( (&) )
+import qualified Data.Sequence                               as S
+import           Data.Time                                   ( UTCTime )
+import           Data.Time.Format.ISO8601                    ( iso8601ParseM )
 
+import           Network.DO.Spaces.Actions.GetBucketLocation
+                 ( GetBucketLocation
+                 , GetBucketLocationResponse(..)
+                 )
 import           Network.DO.Spaces.Actions.ListAllBuckets
                  ( ListAllBuckets
                  , ListAllBucketsResponse(..)
@@ -22,8 +27,9 @@ import           Network.DO.Spaces.Actions.ListBucket
                  )
 import           Network.DO.Spaces.Request
 import           Network.DO.Spaces.Types
-import           Network.HTTP.Client.Conduit              ( Manager )
-import           Network.HTTP.Client.TLS                  ( getGlobalManager )
+import           Network.HTTP.Client.Conduit                 ( Manager )
+import           Network.HTTP.Client.TLS                     ( getGlobalManager
+                                                             )
 
 import           Test.Hspec
                  ( describe
@@ -34,7 +40,11 @@ import           Test.Hspec
 
 {- HLINT ignore "Redundant do" -}
 main :: IO ()
-main = requests >> listAllBucketsResponse >> listBucketResponse
+main = sequence_ [ requests
+                 , listAllBucketsResponse
+                 , listBucketResponse
+                 , bucketLocationResponse
+                 ]
 
 requests :: IO ()
 requests = do
@@ -172,3 +182,14 @@ listBucketResponse = do
                                        }
                                      ]
                     }
+
+bucketLocationResponse :: IO ()
+bucketLocationResponse = do
+    bucketContents <- withSourceFile "./tests/data/bucket-location.xml"
+                                     (consumeResponse @GetBucketLocation)
+    hspec $ do
+        describe "GetBucketLocation response" $ do
+            it "parses GetBucketLocationResponse correctly" $ do
+                bucketContents
+                    `shouldBe` GetBucketLocationResponse
+                    { locationConstraint = NewYork }

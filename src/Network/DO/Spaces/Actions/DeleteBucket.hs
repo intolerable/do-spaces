@@ -19,7 +19,10 @@ import           Network.DO.Spaces.Types
                  , SpacesRequestBuilder(..)
                  )
 
-data DeleteBucket = DeleteBucket { bucket :: Bucket }
+-- | Delete a single 'Bucket'. Note that it must be empty
+data DeleteBucket = DeleteBucket
+    { bucket :: Bucket -- ^ The name of the 'Bucket' to delete
+    }
     deriving ( Show, Eq, Generic )
 
 data DeleteBucketResponse = DeleteBucketResponse

@@ -233,6 +233,7 @@ data SpacesException
     | InvalidXML Text
     | MissingKeys Text
     | HTTPStatus Int Text
+    | OtherError Text
     deriving ( Show, Eq, Generic, Typeable )
 
 instance Exception SpacesException
