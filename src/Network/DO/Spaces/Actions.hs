@@ -19,14 +19,9 @@ import           Conduit
                  , runConduit
                  )
 
-import           Control.Exception
-                 ( SomeException(SomeException)
-                 )
 import           Control.Monad                               ( when )
 import           Control.Monad.Catch
-                 ( MonadCatch(catch)
-                 , MonadThrow
-                 , handle
+                 ( MonadThrow
                  , throwM
                  )
 import           Control.Monad.IO.Class                      ( MonadIO(liftIO)
@@ -55,7 +50,7 @@ import           Network.DO.Spaces.Types
                  , Action(..)
                  , ClientException(HTTPStatus)
                  , MonadSpaces
-                 , RawBody
+                 , RawResponse(..)
                  )
 import           Network.DO.Spaces.Utils
                  ( handleMaybe
@@ -80,19 +75,22 @@ runAction action = do
     let stringToSign = mkStringToSign req
         auth         = mkAuthorization req stringToSign
         finalized    = finalize req auth
-    withResponse @_ @IO finalized $ \resp -> do
-        let status = resp & H.responseStatus
-            body   = H.responseBody resp
+    withResponse @_ @m finalized $ \resp -> do
+        let status  = resp & H.responseStatus
+            body    = resp & H.responseBody
+            headers = resp & H.responseHeaders
+            raw     = RawResponse { .. }
+
         when ((status & H.statusCode) >= 300)
-            $ handleMaybe (parseErrorResponse status) body >>= \case
+            $ handleMaybe (parseErrorResponse status) raw >>= \case
                 Just apiErr -> throwM apiErr
                 Nothing     -> do
-                    b <- liftIO . runConduit $ body .| sinkLbs
+                    b <- runConduit $ body .| sinkLbs
                     throwM $ HTTPStatus status b
-        consumeResponse @a body
+        consumeResponse @a raw
 
 parseErrorResponse
-    :: (MonadThrow m, MonadIO m) => Status -> RawBody -> m APIException
+    :: (MonadThrow m, MonadIO m) => Status -> RawResponse m -> m APIException
 parseErrorResponse status raw = do
     cursor <- xmlDocCursor raw
     code <- X.force (xmlAttrError "Code")

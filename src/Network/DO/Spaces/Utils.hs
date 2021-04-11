@@ -1,6 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
-
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeApplications #-}
 
 -- |
@@ -23,10 +23,9 @@ import           Conduit                  ( (.|), runConduit )
 import           Control.Monad.Catch
                  ( MonadCatch
                  , MonadThrow(throwM)
-                 , handle
                  , handleAll
                  )
-import           Control.Monad.IO.Class   ( MonadIO(liftIO) )
+import           Control.Monad.IO.Class   ( MonadIO )
 
 import           Data.ByteString          ( ByteString )
 import qualified Data.ByteString.Char8    as C
@@ -72,15 +71,16 @@ showCannedACL = \case
 handleMaybe :: MonadCatch m => (a -> m b) -> a -> m (Maybe b)
 handleMaybe g x = handleAll (\_ -> return Nothing) (Just <$> g x)
 
-xmlDocCursor :: MonadIO m => RawBody -> m X.Cursor
-xmlDocCursor raw = X.fromDocument
-    <$> (liftIO . runConduit $ raw .| X.sinkDoc X.def)
+xmlDocCursor :: (MonadIO m, MonadThrow m) => RawResponse m -> m X.Cursor
+xmlDocCursor raw = X.fromDocument <$> runConduit (body .| X.sinkDoc X.def)
+  where
+    RawResponse { .. } = raw
 
 -- | XML parser for recurring 'Owner' attribute
 ownerP :: MonadThrow m => Cursor Node -> m Owner
 ownerP c = do
-    id' <- X.forceM (xmlAttrError "Owner ID")
-        $ c $/ X.laxElement "ID" &/ X.content &| xmlIntP @_ @ID
+    id' <- X.forceM (xmlAttrError "ID")
+        $ c $/ X.laxElement "ID" &/ X.content &| xmlIntP @_ @OwnerID
     return Owner { displayName = id', id' }
 
 -- | Parse some 'Num' type from 'Text'

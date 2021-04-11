@@ -23,7 +23,7 @@ module Network.DO.Spaces.Types
       -- * Making requests
     , SpacesRequest(..)
     , SpacesRequestBuilder(..)
-    , RawBody
+    , RawResponse(..)
     , Method(..)
     , Region(..)
     , AccessKey(..)
@@ -40,7 +40,7 @@ module Network.DO.Spaces.Types
     , Object(..)
     , Bucket(..)
     , BucketInfo(..)
-    , ID(..)
+    , OwnerID(..)
     , DisplayName
     , Owner(..)
     , ObjectInfo(..)
@@ -49,6 +49,7 @@ module Network.DO.Spaces.Types
     , ClientException(..)
     , SpacesException(..)
     , APIException(..)
+    , ObjectMetadata(..)
     ) where
 
 import           Conduit                     ( ConduitT, MonadUnliftIO )
@@ -81,12 +82,13 @@ import           Network.HTTP.Client.Conduit
                  )
 import           Network.HTTP.Types          ( Header, Query )
 import           Network.HTTP.Types.Status   ( Status )
+import           Network.Mime                ( MimeType )
 
-newtype SpacesT a = SpacesT (ReaderT Spaces IO a)
+newtype SpacesT m a = SpacesT (ReaderT Spaces m a)
     deriving ( Generic, Functor, Applicative, Monad, MonadIO, MonadThrow
-             , MonadReader Spaces, MonadUnliftIO )
+             , MonadCatch, MonadReader Spaces, MonadUnliftIO )
 
-runSpacesT :: SpacesT a -> Spaces -> IO a
+runSpacesT :: SpacesT m a -> Spaces -> m a
 runSpacesT (SpacesT x) = runReaderT x
 
 type MonadSpaces m =
@@ -139,7 +141,7 @@ data Region
 
 -- | HTTP request methods, to avoid using @http-client@'s stringly-typed @Method@
 -- synonym
-data Method = GET | POST | PUT | DELETE
+data Method = GET | POST | PUT | DELETE | HEAD
     deriving ( Show, Eq, Generic )
 
 newtype Bucket = Bucket { unBucket :: Text }
@@ -148,25 +150,37 @@ newtype Bucket = Bucket { unBucket :: Text }
 data BucketInfo = BucketInfo { name :: Bucket, creationDate :: UTCTime }
     deriving ( Show, Eq, Generic )
 
+-- | A \"key\", in AWS parlance
 newtype Object = Object { unObject :: Text }
     deriving ( Show, Eq, Generic )
 
+-- | Information about a single 'Object'
 data ObjectInfo = ObjectInfo
-    { object       :: Object --
+    { object       :: Object
     , lastModified :: UTCTime
-    , etag         :: Text
-    , size         :: Int
+    , etag         :: Text -- ^ MD5 hash of the 'Object'
+    , size         :: Int -- ^ Size in bytes
     , owner        :: Owner
     }
     deriving ( Show, Eq, Generic )
 
-data Owner = Owner { id' :: ID, displayName :: DisplayName }
+-- | Metadata returned when querying information about an 'Object'
+data ObjectMetadata = ObjectMetadata
+    { contentLength :: Int -- ^ length in bytes
+    , contentType   :: MimeType
+    , etag          :: Text -- ^ MD5 hash of the 'Object'
+    }
     deriving ( Show, Eq, Generic )
 
-newtype ID = ID { unID :: Int }
+data Owner = Owner { id' :: OwnerID, displayName :: DisplayName }
+    deriving ( Show, Eq, Generic )
+
+newtype OwnerID = OwnerID { unOwnerID :: Int }
     deriving ( Show, Eq, Generic, Num )
 
-type DisplayName = ID
+-- | The display name is always equivalent to the owner's ID; Spaces includes
+-- it for AWS compatibility
+type DisplayName = OwnerID
 
 -- | Represents some resource that has been canonicalized according to the
 -- Spaces/AWS v4 spec
@@ -178,7 +192,13 @@ data ComputedTag = Hash | StrToSign | Sig | Cred | Auth
     deriving ( Show, Eq )
 
 -- | A strict 'ByteString' that has been computed according to some part of
--- the AWS v4 spec
+-- the AWS v4 spec. The AWS v4 signature is calculated from a series of
+-- interdependent computations. It would be possible to represent these all as
+-- 'ByteString's; this approach, however, would make it easy to confuse two
+-- sequences that are not semantically equivalent, leading to the generation of
+-- malformed singatures. The promiscuous use of 'ByteString's also makes for
+-- unclear type signatures. Using a GADT with type synonyms is simpler than
+-- creating a @newtype@ for each type of computation
 data Computed (a :: ComputedTag) where
     Hashed :: ByteString -> Computed 'Hash
     -- | Represents a \"string to sign\" that has been computed according to the
@@ -230,9 +250,11 @@ class Action a where
 
     buildRequest :: Spaces -> a -> SpacesRequestBuilder
     consumeResponse
-        :: (MonadIO m, MonadThrow m) => RawBody -> m (SpacesResponse a)
+        :: (MonadIO m, MonadThrow m) => RawResponse m -> m (SpacesResponse a)
 
-type RawBody = ConduitT () ByteString IO ()
+data RawResponse m =
+    RawResponse { headers :: [Header], body :: ConduitT () ByteString m () }
+    deriving ( Generic )
 
 -- How to discover 'AccessKey's and 'SecretKey's when creating a new
 -- 'Spaces' object

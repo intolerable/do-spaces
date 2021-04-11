@@ -1,5 +1,5 @@
-{-# LANGUAGE DisambiguateRecordFields #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeApplications #-}
 
 -- |
@@ -51,14 +51,14 @@ requests = do
             it "Generates the canonical request"
                 $ (spacesRequest & canonicalRequest) `shouldBe` canonRequest
 
-            it "Generates the string to sign" $ do
-                mkStringToSign spacesRequest `shouldBe` strToSign
+            it "Generates the string to sign"
+                $ mkStringToSign spacesRequest `shouldBe` strToSign
 
-            it "Generates the signature" $ do
-                mkSignature spacesRequest strToSign `shouldBe` sig
+            it "Generates the signature"
+                $ mkSignature spacesRequest strToSign `shouldBe` sig
 
-            it "Generates the authorization" $ do
-                mkAuthorization spacesRequest strToSign `shouldBe` auth
+            it "Generates the authorization"
+                $ mkAuthorization spacesRequest strToSign `shouldBe` auth
   where
     bodyHash =
         "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -114,88 +114,99 @@ requests = do
 
 errorResponse :: IO ()
 errorResponse = do
-    apiEx <- withSourceFile "./tests/data/error-response.xml"
-                            (parseErrorResponse status)
+    apiEx <- withSourceFile "./tests/data/error-response.xml" $ \body -> do
+        let headers = mempty
+            raw     = RawResponse { .. }
+        parseErrorResponse status raw
+
     hspec $ do
         describe "APIException parsing" $ do
-            it "parses APIException correctly" $ do
-                apiEx
-                    `shouldBe` APIException
-                    { status
-                    , code      = "SignatureDoesNotMatch"
-                    , requestID = "tx000012a832c-nyc3"
-                    , hostID    = "71f0230-nyc3a-nyc"
-                    }
+            it "parses APIException correctly"
+                $ apiEx
+                `shouldBe` APIException
+                { status
+                , code      = "SignatureDoesNotMatch"
+                , requestID = "tx000012a832c-nyc3"
+                , hostID    = "71f0230-nyc3a-nyc"
+                }
   where
     status = mkStatus 403 ""
 
 listAllBucketsResponse :: IO ()
 listAllBucketsResponse = do
-    allBuckets <- withSourceFile "./tests/data/list-all-buckets.xml"
-                                 (consumeResponse @ListAllBuckets)
+    allBuckets
+        <- withSourceFile "./tests/data/list-all-buckets.xml" $ \body -> do
+            let headers = mempty
+                raw     = RawResponse { .. }
+            consumeResponse @ListAllBuckets raw
     bucketDate1 <- iso8601ParseM @_ @UTCTime "2017-06-23T18:37:48.157Z"
     bucketDate2 <- iso8601ParseM @_ @UTCTime "2017-06-23T18:37:48.157Z"
 
     hspec $ do
         describe "ListAllBuckets response" $ do
-            it "parses ListAllBucketsResponse correctly" $ do
-                allBuckets
-                    `shouldBe` ListAllBucketsResponse
-                    { owner   = Owner (ID 6174283) (ID 6174283)
-                    , buckets =
-                          S.fromList [ BucketInfo (Bucket "static-images")
-                                                  bucketDate1
-                                     , BucketInfo (Bucket "log-files")
-                                                  bucketDate2
-                                     ]
-                    }
+            it "parses ListAllBucketsResponse correctly"
+                $ allBuckets
+                `shouldBe` ListAllBucketsResponse
+                { owner   = Owner (OwnerID 6174283) (OwnerID 6174283)
+                , buckets =
+                      S.fromList [ BucketInfo (Bucket "static-images")
+                                              bucketDate1
+                                 , BucketInfo (Bucket "log-files") bucketDate2
+                                 ]
+                }
 
 listBucketResponse :: IO ()
 listBucketResponse = do
-    bucketContents <- withSourceFile "./tests/data/list-bucket.xml"
-                                     (consumeResponse @ListBucket)
+    bucketContents
+        <- withSourceFile "./tests/data/list-bucket.xml" $ \body -> do
+            let headers = mempty
+                raw     = RawResponse { .. }
+            consumeResponse @ListBucket raw
     objectDate1 <- iso8601ParseM @_ @UTCTime "2017-07-13T18:40:46.777Z"
     objectDate2 <- iso8601ParseM @_ @UTCTime "2017-07-14T17:44:03.597Z"
     hspec $ do
         describe "ListBucket response" $ do
-            it "parses ListBucketResponse correctly" $ do
-                bucketContents
-                    `shouldBe` ListBucketResponse
-                    { bucket      = Bucket "static-images"
-                    , prefix      = Nothing
-                    , marker      = Nothing
-                    , nextMarker  = Nothing
-                    , maxKeys     = 1000
-                    , isTruncated = False
-                    , objects     =
-                          S.fromList [ ObjectInfo
-                                       { object       = Object "example.txt"
-                                       , lastModified = objectDate1
-                                       , etag         =
-                                             "b3a92f49e7ae64acbf6b3e76f2040f5e"
-                                       , size         = 14
-                                       , owner        =
-                                             Owner (ID 6174283) (ID 6174283)
-                                       }
-                                     , ObjectInfo
-                                       { object       = Object "sammy.png"
-                                       , lastModified = objectDate2
-                                       , etag         =
-                                             "fb08934ef619f205f272b0adfd6c018c"
-                                       , size         = 35369
-                                       , owner        =
-                                             Owner (ID 6174283) (ID 6174283)
-                                       }
-                                     ]
-                    }
+            it "parses ListBucketResponse correctly"
+                $ bucketContents
+                `shouldBe` ListBucketResponse
+                { bucket      = Bucket "static-images"
+                , prefix      = Nothing
+                , marker      = Nothing
+                , nextMarker  = Nothing
+                , maxKeys     = 1000
+                , isTruncated = False
+                , objects     =
+                      S.fromList [ ObjectInfo
+                                   { object       = Object "example.txt"
+                                   , lastModified = objectDate1
+                                   , etag         =
+                                         "b3a92f49e7ae64acbf6b3e76f2040f5e"
+                                   , size         = 14
+                                   , owner        = Owner (OwnerID 6174283)
+                                                          (OwnerID 6174283)
+                                   }
+                                 , ObjectInfo
+                                   { object       = Object "sammy.png"
+                                   , lastModified = objectDate2
+                                   , etag         =
+                                         "fb08934ef619f205f272b0adfd6c018c"
+                                   , size         = 35369
+                                   , owner        = Owner (OwnerID 6174283)
+                                                          (OwnerID 6174283)
+                                   }
+                                 ]
+                }
 
 bucketLocationResponse :: IO ()
 bucketLocationResponse = do
-    bucketContents <- withSourceFile "./tests/data/bucket-location.xml"
-                                     (consumeResponse @GetBucketLocation)
+    bucketContents
+        <- withSourceFile "./tests/data/bucket-location.xml" $ \body -> do
+            let headers = mempty
+                raw     = RawResponse { .. }
+            consumeResponse @GetBucketLocation raw
     hspec $ do
         describe "GetBucketLocation response" $ do
-            it "parses GetBucketLocationResponse correctly" $ do
-                bucketContents
-                    `shouldBe` GetBucketLocationResponse
-                    { locationConstraint = NewYork }
+            it "parses GetBucketLocationResponse correctly"
+                $ bucketContents
+                `shouldBe` GetBucketLocationResponse
+                { locationConstraint = NewYork }

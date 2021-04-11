@@ -2,27 +2,40 @@
 {-# LANGUAGE RecordWildCards #-}
 
 -- |
-module Network.DO.Spaces ( newSpaces ) where
+module Network.DO.Spaces ( newSpaces, send ) where
 
-import           Control.Exception       ( throwIO )
+import           Conduit                   ( MonadUnliftIO )
 
-import qualified Data.ByteString.Char8   as C
-import           Data.Foldable           ( asum )
-import qualified Data.Text               as T
+import           Control.Exception         ( throwIO )
+import           Control.Monad.Catch       ( MonadCatch )
 
+import qualified Data.ByteString.Char8     as C
+import           Data.Foldable             ( asum )
+import qualified Data.Text                 as T
+
+import           Network.DO.Spaces.Actions ( runAction )
 import           Network.DO.Spaces.Types
                  ( AccessKey(..)
+                 , Action(SpacesResponse)
+                 , ClientException(MissingKeys)
                  , CredentialSource(..)
                  , Region
                  , SecretKey(..)
                  , Spaces(..)
-                 , ClientException(MissingKeys)
+                 , runSpacesT
                  )
-import           Network.HTTP.Client.TLS ( getGlobalManager )
+import           Network.HTTP.Client.TLS   ( getGlobalManager )
 
-import           System.Environment      ( lookupEnv )
+import           System.Environment        ( lookupEnv )
 
--- | Create a new 'Spaces' with both credentials and HTTP 'Manager'
+-- | For convenience; run an 'Action' with a given 'Spaces' client
+send :: (Action a, MonadUnliftIO m, MonadCatch m)
+     => a
+     -> Spaces
+     -> m (SpacesResponse a)
+send action = runSpacesT (runAction action)
+
+-- | Create a new 'Spaces' from your credentials and a 'Region'
 newSpaces :: Region -> CredentialSource -> IO Spaces
 newSpaces region cs = do
     manager <- getGlobalManager
@@ -45,7 +58,7 @@ newSpaces region cs = do
 
     throwMissingKeys k = throwIO . MissingKeys $ "Missing " <> k
 
-    lookupKeys xs = asum <$> (sequence $ lookupEnv <$> xs)
+    lookupKeys xs = asum <$> sequence (lookupEnv <$> xs)
 
     lookupKey = lookupEnv . T.unpack
 

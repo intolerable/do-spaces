@@ -43,6 +43,7 @@ library
     , http-conduit       ^>=2.3
     , http-types         ^>=0.12
     , memory             >=0.14    && <0.16
+    , mime-types         >=0.1.0.7 && <0.1.1
     , mtl                ^>=2.2
     , resourcet          ^>=1.2
     , text               ^>=1.2
