@@ -13,15 +13,14 @@ module Network.DO.Spaces.Request
 import           Control.Monad.Catch         ( MonadThrow(throwM) )
 
 import           Crypto.Hash                 ( SHA256, hash )
-import           Crypto.MAC.HMAC             ( hmac, hmacGetDigest )
+import           Crypto.MAC.HMAC             ( hmac )
 
 import           Data.Bifunctor              ( first )
 import           Data.ByteArray              ( convert )
 import           Data.ByteString             ( ByteString )
-import qualified Data.ByteString             as B
-import qualified Data.ByteString.Base16      as BS
+import qualified Data.ByteString.Base16      as B16
 import qualified Data.ByteString.Char8       as C
-import qualified Data.ByteString.Lazy        as L
+import qualified Data.ByteString.Lazy        as LB
 import qualified Data.CaseInsensitive        as CI
 import           Data.Function               ( (&) )
 import           Data.List                   ( sort )
@@ -48,7 +47,7 @@ import qualified Network.HTTP.Types          as H
 finalize :: SpacesRequest -> Authorization -> Request
 finalize sr auth = req { H.requestHeaders = authHeader : reqHeaders }
   where
-    authHeader = (CI.mk "Authorization", uncompute auth)
+    authHeader = (CI.mk "authorization", uncompute auth)
 
     req        = sr & request
 
@@ -63,8 +62,7 @@ newSpacesRequest SpacesRequestBuilder { .. } time = do
         $ mconcat [ show reqMethod
                   , " "
                   , "https://"
-                  , maybe mempty (T.unpack . unBucket) bucket
-                  , "."
+                  , maybe mempty ((<> ".") . T.unpack . unBucket) bucket
                   , regionSlug region
                   , "."
                   , "digitaloceanspaces.com/"
@@ -72,14 +70,15 @@ newSpacesRequest SpacesRequestBuilder { .. } time = do
                   ]
     payload <- bodyBS $ fromMaybe (RequestBodyBS mempty) body
     let payloadHash      = hashHex payload
-        payloadLen       = B.length payload
-        newHeaders       = overrideReqHeaders req payloadLen payloadHash
+        newHeaders       = overrideReqHeaders req payloadHash time
         request          = req
             { H.requestHeaders = headers <> newHeaders
             , H.queryString    = maybe mempty (H.renderQuery True) queryString
             }
         canonicalRequest = mkCanonicalized request payloadHash
-    return $ SpacesRequest { method = reqMethod, headers = newHeaders, .. }
+    return
+        $ SpacesRequest
+        { method = reqMethod, headers = headers <> newHeaders, .. }
   where
     Spaces { .. } = spaces
 
@@ -90,30 +89,33 @@ mkCanonicalized :: Request
                 -> Hashed  -- ^ The hashed 'RequestBody'
                 -> Canonicalized Request
 mkCanonicalized request payloadHash = Canonicalized
-    $ C.unlines [ request & H.method
-                , request & H.path
-                , request & H.queryString
-                , request
-                  & H.requestHeaders
-                  & canonicalizeHeaders
-                  & unCanonicalized
-                , request & H.requestHeaders & joinHeaderNames
-                , uncompute payloadHash
-                ]
+    $ C.intercalate "\n"
+                    [ request & H.method
+                    , request & H.path
+                      -- TODO fix query params, strip leading '?'
+                    , request & H.queryString
+                    , request
+                      & H.requestHeaders
+                      & canonicalizeHeaders
+                      & unCanonicalized
+                    , request & H.requestHeaders & joinHeaderNames
+                    , uncompute payloadHash
+                    ]
 
 -- | Generate a 'StringToSign'
 mkStringToSign :: SpacesRequest -> StringToSign
 mkStringToSign req@SpacesRequest { .. } = StringToSign
-    $ C.unlines [ "AWS4-HMAC-SHA256"
-                , fmtAmzTime time
-                , mkCredentials req & uncompute
-                , canonicalRequest & unCanonicalized & hashHex & uncompute
-                ]
+    $ C.intercalate "\n"
+                    [ "AWS4-HMAC-SHA256"
+                    , fmtAmzTime time
+                    , mkCredentials req & uncompute
+                    , canonicalRequest & unCanonicalized & hashHex & uncompute
+                    ]
 
 -- | Generate a 'Signature'
 mkSignature :: SpacesRequest -> StringToSign -> Signature
 mkSignature SpacesRequest { .. } str = Signature
-    . BS.encode
+    . B16.encode
     . keyedHash (uncompute str)
     . keyedHash "aws4_request"
     . keyedHash "s3"
@@ -127,13 +129,13 @@ mkSignature SpacesRequest { .. } str = Signature
 -- @Authorization@ header
 mkAuthorization :: SpacesRequest -> StringToSign -> Authorization
 mkAuthorization req@SpacesRequest { .. } str = Authorization
-    $ mconcat [ "AWS4-HMAC-SHA256 Credential="
-                <> (spaces & accessKey & unAccessKey)
-                <> "/"
-                <> uncompute cred
-              , ", SignedHeaders=" <> joinHeaderNames headers
-              , ", Signature=" <> uncompute sig
-              ]
+    $ C.concat [ "AWS4-HMAC-SHA256 Credential="
+                 <> (spaces & accessKey & unAccessKey)
+                 <> "/"
+                 <> uncompute cred
+               , ", SignedHeaders=" <> joinHeaderNames headers
+               , ", Signature=" <> uncompute sig
+               ]
   where
     cred = mkCredentials req
 
@@ -151,7 +153,7 @@ mkCredentials SpacesRequest { .. } = Credentials
 
 bodyBS :: MonadThrow m => RequestBody -> m ByteString
 bodyBS (RequestBodyBS b)   = return b
-bodyBS (RequestBodyLBS lb) = return $ L.toStrict lb
+bodyBS (RequestBodyLBS lb) = return $ LB.toStrict lb
 bodyBS _                   =
     throwM $ InvalidRequest "Unsupported request body type"
 
@@ -159,16 +161,14 @@ bodyBS _                   =
 -- setting obligatory headers for AWS v4 API requests
 overrideReqHeaders
     :: Request
-    -> Int -- ^ Request body length
     -> Hashed   -- ^ The SHA256 hash of the request body; required in AWS v4
+    -> UTCTime
     -> [Header]
-overrideReqHeaders req len hb = (req & H.requestHeaders) <> newHeaders
+overrideReqHeaders req hb time = (req & H.requestHeaders) <> newHeaders
   where
-    lenBS      = C.pack $ show len
-
-    newHeaders = [ (CI.mk "Host", req & H.host)
-                 , (CI.mk "Content-Length", lenBS)
+    newHeaders = [ (CI.mk "host", req & H.host)
                  , (CI.mk "x-amz-content-sha256", uncompute hb)
+                 , (CI.mk "x-amz-date", fmtAmzTime time)
                  ]
 
 -- | Canonicalize @['Header']@s
@@ -190,7 +190,7 @@ fmtAmzTime :: UTCTime -> ByteString
 fmtAmzTime = C.pack . formatTime defaultTimeLocale "%Y%m%dT%H%M%SZ"
 
 keyedHash :: ByteString -> ByteString -> ByteString
-keyedHash bs k = convert . hmacGetDigest $ hmac @_ @_ @SHA256 k bs
+keyedHash bs k = convert $ hmac @_ @_ @SHA256 k bs
 
 hashHex :: ByteString -> Hashed
-hashHex = Hashed . BS.encode . convert . hash @_ @SHA256
+hashHex = Hashed . B16.encode . convert . hash @_ @SHA256

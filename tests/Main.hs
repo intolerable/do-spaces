@@ -69,26 +69,28 @@ requests = do
         "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
     canonRequest = Canonicalized
-        $ C.unlines [ "GET"
-                    , "/"
-                    , ""
-                    , "content-length:0"
-                    , "host:a-bucket.sgp1.digitaloceanspaces.com"
-                    , "x-amz-content-sha256:" <> bodyHash
-                    , ""
-                    , "content-length;host;x-amz-content-sha256"
-                    , bodyHash
-                    ]
+        $ C.intercalate "\n"
+                        [ "GET"
+                        , "/"
+                        , ""
+                        , "host:a-bucket.sgp1.digitaloceanspaces.com"
+                        , "x-amz-content-sha256:" <> bodyHash
+                        , "x-amz-date:20210404T214315Z"
+                        , ""
+                        , "host;x-amz-content-sha256;x-amz-date"
+                        , bodyHash
+                        ]
 
     strToSign    = StringToSign
-        $ C.unlines [ "AWS4-HMAC-SHA256"
-                    , "20210404T214315Z"
-                    , "20210404/sgp1/s3/aws4_request"
-                    , "d121ec555d43524fda5d6daea0b68654cd2bbcb75c4962c5b1eef8887bf732df"
-                    ]
+        $ C.intercalate "\n"
+                        [ "AWS4-HMAC-SHA256"
+                        , "20210404T214315Z"
+                        , "20210404/sgp1/s3/aws4_request"
+                        , "266d2fb56a251205c42c7e0deb7d2e370574cf190f366ecf53179c27697c8e38"
+                        ]
 
     sig          =
-        Signature "1d0b8f8092719a53f9fafd9695fffa85057e3bc6f02f33430e161ec388b1beee"
+        Signature "3d0da77e916e588d05f0190f8c350eddb47337953897b1e0cfdb44075fd6b2b9"
 
     auth         = Authorization
         $ mconcat [ "AWS4-HMAC-SHA256 Credential="
@@ -96,7 +98,7 @@ requests = do
                   , "/"
                   , "20210404/sgp1/s3/aws4_request, "
                   , "SignedHeaders="
-                  , "content-length;host;x-amz-content-sha256, "
+                  , "host;x-amz-content-sha256;x-amz-date, "
                   , "Signature="
                   , uncompute sig
                   ]

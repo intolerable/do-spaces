@@ -244,7 +244,7 @@ data SpacesException
     = InvalidRequest Text
     | InvalidXML Text
     | MissingKeys Text
-    | HTTPStatus Int Text
+    | HTTPStatus Int ByteString
     | OtherError Text
     deriving ( Show, Eq, Generic, Typeable )
 
