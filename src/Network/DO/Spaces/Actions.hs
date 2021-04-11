@@ -1,4 +1,8 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
+
+{-# LANGUAGE RecordWildCards #-}
+
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 
@@ -7,6 +11,7 @@ module Network.DO.Spaces.Actions
     ( runAction
       -- * Re-exports
     , module M
+    , parseErrorResponse
     ) where
 
 import           Conduit
@@ -14,14 +19,21 @@ import           Conduit
                  , runConduit
                  )
 
+import           Control.Exception
+                 ( SomeException(SomeException)
+                 )
 import           Control.Monad                               ( when )
-import           Control.Monad.Catch                         ( throwM )
+import           Control.Monad.Catch
+                 ( MonadCatch(catch)
+                 , MonadThrow
+                 , handle
+                 , throwM
+                 )
 import           Control.Monad.IO.Class                      ( MonadIO(liftIO)
                                                              )
 import           Control.Monad.Reader.Class                  ( MonadReader(ask)
                                                              )
 
-import qualified Data.ByteString.Lazy                        as LB
 import           Data.Conduit.Binary                         ( sinkLbs )
 import           Data.Function                               ( (&) )
 import           Data.Time                                   ( getCurrentTime
@@ -39,15 +51,26 @@ import           Network.DO.Spaces.Request
                  , newSpacesRequest
                  )
 import           Network.DO.Spaces.Types
-                 ( Action(..)
+                 ( APIException(..)
+                 , Action(..)
+                 , ClientException(HTTPStatus)
                  , MonadSpaces
-                 , SpacesException(HTTPStatus)
+                 , RawBody
+                 )
+import           Network.DO.Spaces.Utils
+                 ( handleMaybe
+                 , xmlAttrError
+                 , xmlDocCursor
                  )
 import           Network.HTTP.Client.Conduit                 ( withResponse )
 import qualified Network.HTTP.Conduit                        as H
 import qualified Network.HTTP.Types                          as H
+import           Network.HTTP.Types                          ( Status )
 
--- | Run an 'Action', receiving a 'SpacesResponse'
+import qualified Text.XML.Cursor                             as X
+import           Text.XML.Cursor                             ( ($/), (&/) )
+
+-- | Run an instance of 'Action', receiving a 'SpacesResponse'
 runAction
     :: forall a m. (MonadSpaces m, Action a) => a -> m (SpacesResponse a)
 runAction action = do
@@ -58,9 +81,24 @@ runAction action = do
         auth         = mkAuthorization req stringToSign
         finalized    = finalize req auth
     withResponse @_ @IO finalized $ \resp -> do
-        let statusCode = resp & H.responseStatus & H.statusCode
-            body       = H.responseBody resp
-        when (statusCode >= 300) $ do
-            b <- LB.toStrict <$> (liftIO . runConduit $ body .| sinkLbs)
-            throwM $ HTTPStatus statusCode b
+        let status = resp & H.responseStatus
+            body   = H.responseBody resp
+        when ((status & H.statusCode) >= 300)
+            $ handleMaybe (parseErrorResponse status) body >>= \case
+                Just apiErr -> throwM apiErr
+                Nothing     -> do
+                    b <- liftIO . runConduit $ body .| sinkLbs
+                    throwM $ HTTPStatus status b
         consumeResponse @a body
+
+parseErrorResponse
+    :: (MonadThrow m, MonadIO m) => Status -> RawBody -> m APIException
+parseErrorResponse status raw = do
+    cursor <- xmlDocCursor raw
+    code <- X.force (xmlAttrError "Code")
+        $ cursor $/ X.laxElement "Code" &/ X.content
+    requestID <- X.force (xmlAttrError "RequestId")
+        $ cursor $/ X.laxElement "RequestId" &/ X.content
+    hostID <- X.force (xmlAttrError "HostId")
+        $ cursor $/ X.laxElement "HostId" &/ X.content
+    return APIException { .. }

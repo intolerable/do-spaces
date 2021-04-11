@@ -79,6 +79,7 @@ test-suite tests
     , hspec            >=2.0   && <3.0
     , http-client-tls  ^>=0.3.5
     , http-conduit     ^>=2.3
+    , http-types       ^>=0.12
     , resourcet        ^>=1.2
     , text             ^>=1.2
     , time             >=1.8   && <1.12

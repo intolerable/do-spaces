@@ -1,46 +1,38 @@
 {-# LANGUAGE DisambiguateRecordFields #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TypeApplications #-}
 
 -- |
 module Main where
 
-import           Conduit                                     ( withSourceFile
-                                                             )
+import           Conduit                   ( withSourceFile )
 
-import qualified Data.ByteString.Char8                       as C
-import           Data.Function                               ( (&) )
-import qualified Data.Sequence                               as S
-import           Data.Time                                   ( UTCTime )
-import           Data.Time.Format.ISO8601                    ( iso8601ParseM )
+import qualified Data.ByteString.Char8     as C
+import           Data.Function             ( (&) )
+import qualified Data.Sequence             as S
+import           Data.Time                 ( UTCTime )
+import           Data.Time.Format.ISO8601  ( iso8601ParseM )
 
-import           Network.DO.Spaces.Actions.GetBucketLocation
+import           Network.DO.Spaces         ( newSpaces )
+import           Network.DO.Spaces.Actions
                  ( GetBucketLocation
                  , GetBucketLocationResponse(..)
-                 )
-import           Network.DO.Spaces.Actions.ListAllBuckets
-                 ( ListAllBuckets
+                 , ListAllBuckets
                  , ListAllBucketsResponse(..)
-                 )
-import           Network.DO.Spaces.Actions.ListBucket
-                 ( ListBucket
+                 , ListBucket
                  , ListBucketResponse(..)
+                 , parseErrorResponse
                  )
 import           Network.DO.Spaces.Request
 import           Network.DO.Spaces.Types
-import           Network.HTTP.Client.Conduit                 ( Manager )
-import           Network.HTTP.Client.TLS                     ( getGlobalManager
-                                                             )
+import           Network.HTTP.Types        ( mkStatus )
 
-import           Test.Hspec
-                 ( describe
-                 , hspec
-                 , it
-                 , shouldBe
-                 )
+import           Test.Hspec                ( describe, hspec, it, shouldBe )
 
 {- HLINT ignore "Redundant do" -}
 main :: IO ()
 main = sequence_ [ requests
+                 , errorResponse
                  , listAllBucketsResponse
                  , listBucketResponse
                  , bucketLocationResponse
@@ -48,8 +40,11 @@ main = sequence_ [ requests
 
 requests :: IO ()
 requests = do
-    mgr <- getGlobalManager
-    spacesRequest <- newSpacesRequest (testBuilder mgr) testTime
+    testSpaces
+        <- newSpaces Singapore
+                     (Explicit (AccessKey "II5JDQBAN3JYM4DNEB6C")
+                               (SecretKey "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"))
+    spacesRequest <- newSpacesRequest (testBuilder testSpaces) testTime
 
     hspec $ do
         describe "Spaces requests" $ do
@@ -65,7 +60,7 @@ requests = do
             it "Generates the authorization" $ do
                 mkAuthorization spacesRequest strToSign `shouldBe` auth
   where
-    bodyHash     =
+    bodyHash =
         "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
     canonRequest = Canonicalized
@@ -81,7 +76,7 @@ requests = do
                         , bodyHash
                         ]
 
-    strToSign    = StringToSign
+    strToSign = StringToSign
         $ C.intercalate "\n"
                         [ "AWS4-HMAC-SHA256"
                         , "20210404T214315Z"
@@ -89,10 +84,9 @@ requests = do
                         , "266d2fb56a251205c42c7e0deb7d2e370574cf190f366ecf53179c27697c8e38"
                         ]
 
-    sig          =
-        Signature "3d0da77e916e588d05f0190f8c350eddb47337953897b1e0cfdb44075fd6b2b9"
+    sig = Signature "3d0da77e916e588d05f0190f8c350eddb47337953897b1e0cfdb44075fd6b2b9"
 
-    auth         = Authorization
+    auth = Authorization
         $ mconcat [ "AWS4-HMAC-SHA256 Credential="
                   , "II5JDQBAN3JYM4DNEB6C"
                   , "/"
@@ -103,27 +97,37 @@ requests = do
                   , uncompute sig
                   ]
 
-testTime :: UTCTime
-testTime = read @UTCTime "2021-04-04 21:43:15 +0000"
+    testTime = read @UTCTime "2021-04-04 21:43:15 +0000"
 
-testSpaces :: Manager -> Spaces
-testSpaces = Spaces (AccessKey "II5JDQBAN3JYM4DNEB6C")
-                    (SecretKey "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY")
-                    Singapore
+    testBuilder spaces = SpacesRequestBuilder
+        { spaces
+        , method      = Nothing
+        , body        = Nothing
+        , headers     = mempty
+        , bucket      = Just testBucket
+        , object      = Nothing
+        , queryString = Nothing
+        }
 
-testBuilder :: Manager -> SpacesRequestBuilder
-testBuilder mgr = SpacesRequestBuilder
-    { spaces      = testSpaces mgr
-    , method      = Nothing
-    , body        = Nothing
-    , headers     = mempty
-    , bucket      = Just testBucket
-    , object      = Nothing
-    , queryString = Nothing
-    }
+    testBucket :: Bucket
+    testBucket = Bucket "a-bucket"
 
-testBucket :: Bucket
-testBucket = Bucket "a-bucket"
+errorResponse :: IO ()
+errorResponse = do
+    apiEx <- withSourceFile "./tests/data/error-response.xml"
+                            (parseErrorResponse status)
+    hspec $ do
+        describe "APIException parsing" $ do
+            it "parses APIException correctly" $ do
+                apiEx
+                    `shouldBe` APIException
+                    { status
+                    , code      = "SignatureDoesNotMatch"
+                    , requestID = "tx000012a832c-nyc3"
+                    , hostID    = "71f0230-nyc3a-nyc"
+                    }
+  where
+    status = mkStatus 403 ""
 
 listAllBucketsResponse :: IO ()
 listAllBucketsResponse = do

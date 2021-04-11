@@ -21,7 +21,7 @@ import           Network.DO.Spaces.Types
                  ( Action(..)
                  , Bucket
                  , Region(..)
-                 , SpacesException(OtherError)
+                 , ClientException(OtherError)
                  , SpacesRequestBuilder(..)
                  )
 import           Network.DO.Spaces.Utils ( xmlAttrError, xmlDocCursor )

@@ -46,23 +46,30 @@ module Network.DO.Spaces.Types
     , ObjectInfo(..)
     , CannedACL(..)
       -- * Exceptions
+    , ClientException(..)
     , SpacesException(..)
+    , APIException(..)
     ) where
 
 import           Conduit                     ( ConduitT, MonadUnliftIO )
 
-import           Control.Exception           ( Exception )
-import           Control.Monad.Catch         ( MonadThrow )
+import           Control.Exception
+                 ( Exception(toException, fromException)
+                 , SomeException
+                 )
+import           Control.Monad.Catch         ( MonadCatch, MonadThrow )
 import           Control.Monad.IO.Class      ( MonadIO )
 import           Control.Monad.Reader        ( MonadReader
                                              , ReaderT(ReaderT, runReaderT)
                                              )
 
 import           Data.ByteString             ( ByteString )
+import qualified Data.ByteString.Lazy        as LB
 import           Data.Data                   ( Typeable )
 import           Data.Kind                   ( Type )
 import           Data.Text                   ( Text )
 import           Data.Time                   ( UTCTime )
+import           Data.Typeable               ( cast )
 
 import           GHC.Generics                ( Generic )
 
@@ -73,6 +80,7 @@ import           Network.HTTP.Client.Conduit
                  , RequestBody
                  )
 import           Network.HTTP.Types          ( Header, Query )
+import           Network.HTTP.Types.Status   ( Status )
 
 newtype SpacesT a = SpacesT (ReaderT Spaces IO a)
     deriving ( Generic, Functor, Applicative, Monad, MonadIO, MonadThrow
@@ -82,7 +90,7 @@ runSpacesT :: SpacesT a -> Spaces -> IO a
 runSpacesT (SpacesT x) = runReaderT x
 
 type MonadSpaces m =
-    (MonadReader Spaces m, MonadIO m, MonadUnliftIO m, MonadThrow m)
+    (MonadReader Spaces m, MonadIO m, MonadUnliftIO m, MonadCatch m)
 
 data Spaces = Spaces
     { accessKey :: AccessKey -- ^ Your DO access key
@@ -236,16 +244,49 @@ data CredentialSource
 -- by s3
 data CannedACL
     = Private -- ^ No unauthenticated public access
-    | PublicRead -- ^ Unauthenticated public read access
+    | PublicRead -- ^ Unauthenticated public read access permitted
     deriving ( Eq, Show )
 
+-- | The base 'Exception' type for both 'ClientException's and 'APIException's
+data SpacesException = forall e. Exception e => SpacesException e
+
+instance Show SpacesException where
+    show (SpacesException e) = show e
+
+instance Exception SpacesException
+
+spsExToException :: Exception e => e -> SomeException
+spsExToException = toException . SpacesException
+
+spsExFromException :: Exception e => SomeException -> Maybe e
+spsExFromException e = do
+    SpacesException x <- fromException e
+    cast x
+
 -- | An exception generated within the 'Spaces' client
-data SpacesException
+data ClientException
     = InvalidRequest Text
     | InvalidXML Text
     | MissingKeys Text
-    | HTTPStatus Int ByteString
+    | HTTPStatus Status LB.ByteString
     | OtherError Text
     deriving ( Show, Eq, Generic, Typeable )
 
-instance Exception SpacesException
+instance Exception ClientException where
+    toException = spsExToException
+
+    fromException = spsExFromException
+
+-- | An XML-formatted, s3-compatible API error response
+data APIException = APIException
+    { status    :: Status -- ^ HTTP 'Status'
+    , code      :: Text -- ^ The s3 error code type
+    , requestID :: Text -- ^ The unique ID of the request
+    , hostID    :: Text
+    }
+    deriving ( Show, Eq, Generic, Typeable )
+
+instance Exception APIException where
+    toException = spsExToException
+
+    fromException = spsExFromException

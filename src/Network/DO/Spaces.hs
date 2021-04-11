@@ -16,7 +16,7 @@ import           Network.DO.Spaces.Types
                  , Region
                  , SecretKey(..)
                  , Spaces(..)
-                 , SpacesException(MissingKeys)
+                 , ClientException(MissingKeys)
                  )
 import           Network.HTTP.Client.TLS ( getGlobalManager )
 

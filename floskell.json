@@ -15,6 +15,7 @@
     "GADTs",
     "MultiWayIf",
     "BangPatterns",
+    "ExistentialQuantification",
     "OverloadedLabels"
   ],
   "fixities": [],

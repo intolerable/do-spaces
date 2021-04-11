@@ -15,11 +15,17 @@ module Network.DO.Spaces.Utils
     , xmlDocCursor
     , xmlMaybeField
     , showCannedACL
+    , handleMaybe
     ) where
 
 import           Conduit                  ( (.|), runConduit )
 
-import           Control.Monad.Catch      ( MonadThrow(throwM) )
+import           Control.Monad.Catch
+                 ( MonadCatch
+                 , MonadThrow(throwM)
+                 , handle
+                 , handleAll
+                 )
 import           Control.Monad.IO.Class   ( MonadIO(liftIO) )
 
 import           Data.ByteString          ( ByteString )
@@ -63,6 +69,9 @@ showCannedACL = \case
     Private    -> "private"
     PublicRead -> "public-read"
 
+handleMaybe :: MonadCatch m => (a -> m b) -> a -> m (Maybe b)
+handleMaybe g x = handleAll (\_ -> return Nothing) (Just <$> g x)
+
 xmlDocCursor :: MonadIO m => RawBody -> m X.Cursor
 xmlDocCursor raw = X.fromDocument
     <$> (liftIO . runConduit $ raw .| X.sinkDoc X.def)
@@ -87,7 +96,7 @@ xmlDatetimeP txt = case iso8601ParseM $ T.unpack txt of
     Nothing -> throwM $ InvalidXML "Failed to read ISO-8601 value"
 
 -- | Helper to build exceptions during XML parsing
-xmlAttrError :: Text -> SpacesException
+xmlAttrError :: Text -> ClientException
 xmlAttrError txt = InvalidXML $ "Missing " <> txt
 
 xmlMaybeField :: Cursor Node -> Text -> Maybe Text
