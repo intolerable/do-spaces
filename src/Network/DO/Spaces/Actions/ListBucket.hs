@@ -18,7 +18,6 @@ import           Data.Coerce             ( coerce )
 import           Data.Sequence           ( Seq )
 import qualified Data.Sequence           as S
 import           Data.Text               ( Text )
-import qualified Data.Text               as T
 import qualified Data.Text.Encoding      as T
 
 import           GHC.Generics            ( Generic )
@@ -33,6 +32,7 @@ import           Network.DO.Spaces.Types
 import           Network.DO.Spaces.Utils
                  ( bshow
                  , ownerP
+                 , unquote
                  , xmlAttrError
                  , xmlDatetimeP
                  , xmlDocCursor
@@ -102,7 +102,6 @@ instance Action ListBucket where
             $ cursor $/ X.laxElement "MaxKeys" &/ X.content &| xmlIntP
         isTruncated <- X.force (xmlAttrError "IsTruncated")
             $ cursor $/ X.laxElement "IsTruncated" &/ X.content &| truncP
-        -- owner <- X.forceM (xmlAttrError "Owner") $ cursor $/ X.laxElement "Owner" &| ownerP
         objects <- S.fromList
             <$> (sequence $ cursor $/ X.laxElement "Contents" &| objectInfoP)
         let prefix     = xmlMaybeField cursor "Prefix"
@@ -119,8 +118,7 @@ instance Action ListBucket where
                 $ c $/ X.laxElement "LastModified" &/ X.content
                 &| xmlDatetimeP
             etag <- X.force (xmlAttrError "ETag")
-                $ c $/ X.laxElement "ETag" &/ X.content
-                &| T.dropAround ('"' ==)
+                $ c $/ X.laxElement "ETag" &/ X.content &| unquote
             size <- X.forceM (xmlAttrError "Size")
                 $ c $/ X.laxElement "Size" &/ X.content &| xmlIntP
             owner <- X.forceM (xmlAttrError "Owner")

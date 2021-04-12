@@ -16,6 +16,8 @@ module Network.DO.Spaces.Utils
     , xmlMaybeField
     , showCannedACL
     , handleMaybe
+    , unquote
+    , eitherToMaybe
     ) where
 
 import           Conduit                  ( (.|), runConduit )
@@ -62,6 +64,14 @@ toLowerBS = C.pack . fmap toLower . C.unpack
 -- | Show a 'ByteString'
 bshow :: Show a => a -> ByteString
 bshow = C.pack . show
+
+-- | Strip leading and trailing double quotes from a 'Text'
+unquote :: Text -> Text
+unquote = T.dropAround ('"' ==)
+
+eitherToMaybe :: Either a b -> Maybe b
+eitherToMaybe (Right x) = Just x
+eitherToMaybe _         = Nothing
 
 showCannedACL :: IsString a => CannedACL -> a
 showCannedACL = \case

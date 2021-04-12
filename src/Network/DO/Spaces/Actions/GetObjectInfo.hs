@@ -33,6 +33,7 @@ import           Network.DO.Spaces.Types
                  , ObjectMetadata(..)
                  , SpacesRequestBuilder(..)
                  )
+import           Network.DO.Spaces.Utils   ( eitherToMaybe, unquote )
 
 import           Text.Read                 ( readMaybe )
 
@@ -60,7 +61,7 @@ instance Action GetObjectInfo where
         metadata <- runMaybeT
             $ ObjectMetadata <$> (readLen =<< lookupHeader "Content-Length")
             <*> lookupHeader "Content-Type"
-            <*> (T.decodeUtf8 <$> lookupHeader "Etag")
+            <*> (readEtag =<< lookupHeader "Etag")
             <*> (readDate =<< lookupHeader "Last-Modified")
         case metadata of
             Just md -> return md
@@ -71,6 +72,9 @@ instance Action GetObjectInfo where
         readLen        = MaybeT . return . readMaybe @Int . C.unpack
 
         readDate       = MaybeT . return . parseAmzTime . C.unpack
+
+        readEtag       =
+            MaybeT . return . fmap unquote . eitherToMaybe . T.decodeUtf8'
 
         parseAmzTime   =
             parseTimeM True defaultTimeLocale "%a, %d %b %Y %H:%M:%S %EZ"
