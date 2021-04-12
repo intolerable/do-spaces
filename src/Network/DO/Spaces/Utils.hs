@@ -72,9 +72,8 @@ handleMaybe :: MonadCatch m => (a -> m b) -> a -> m (Maybe b)
 handleMaybe g x = handleAll (\_ -> return Nothing) (Just <$> g x)
 
 xmlDocCursor :: (MonadIO m, MonadThrow m) => RawResponse m -> m X.Cursor
-xmlDocCursor raw = X.fromDocument <$> runConduit (body .| X.sinkDoc X.def)
-  where
-    RawResponse { .. } = raw
+xmlDocCursor RawResponse { .. } = X.fromDocument
+    <$> runConduit (body .| X.sinkDoc X.def)
 
 -- | XML parser for recurring 'Owner' attribute
 ownerP :: MonadThrow m => Cursor Node -> m Owner

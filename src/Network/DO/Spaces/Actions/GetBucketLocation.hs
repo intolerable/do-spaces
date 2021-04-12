@@ -11,7 +11,6 @@ module Network.DO.Spaces.Actions.GetBucketLocation
     , GetBucketLocationResponse(..)
     ) where
 
-import           Conduit                 ( MonadThrow(throwM) )
 
 import           Data.ByteString         ( ByteString )
 
@@ -30,6 +29,7 @@ import qualified Network.HTTP.Types      as H
 import qualified Text.XML.Cursor         as X
 import           Text.XML.Cursor         ( ($.//), (&/), (&|) )
 import qualified Data.Text as T
+import Control.Monad.Catch (MonadThrow(throwM))
 
 -- | Query the location (the 'Region') of a 'Bucket'
 data GetBucketLocation = GetBucketLocation

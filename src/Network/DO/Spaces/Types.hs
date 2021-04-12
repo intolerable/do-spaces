@@ -44,12 +44,12 @@ module Network.DO.Spaces.Types
     , DisplayName
     , Owner(..)
     , ObjectInfo(..)
+    , ObjectMetadata(..)
     , CannedACL(..)
       -- * Exceptions
     , ClientException(..)
     , SpacesException(..)
     , APIException(..)
-    , ObjectMetadata(..)
     ) where
 
 import           Conduit                     ( ConduitT, MonadUnliftIO )
@@ -94,9 +94,10 @@ runSpacesT (SpacesT x) = runReaderT x
 type MonadSpaces m =
     (MonadReader Spaces m, MonadIO m, MonadUnliftIO m, MonadCatch m)
 
+-- | A client for interacting with the DO Spaces API
 data Spaces = Spaces
-    { accessKey :: AccessKey -- ^ Your DO access key
-    , secretKey :: SecretKey -- ^ Your DO secret key
+    { accessKey :: AccessKey -- ^ Your DO Spaces access key
+    , secretKey :: SecretKey -- ^ Your DO Spaces secret key
     , region    :: Region -- ^ The DO region
     , manager   :: Manager -- ^ HTTP 'Manager'
     }
@@ -154,7 +155,8 @@ data BucketInfo = BucketInfo { name :: Bucket, creationDate :: UTCTime }
 newtype Object = Object { unObject :: Text }
     deriving ( Show, Eq, Generic )
 
--- | Information about a single 'Object'
+-- | Information about a single 'Object', returned when listing a 'Bucket''s
+-- contents
 data ObjectInfo = ObjectInfo
     { object       :: Object
     , lastModified :: UTCTime
@@ -169,6 +171,7 @@ data ObjectMetadata = ObjectMetadata
     { contentLength :: Int -- ^ length in bytes
     , contentType   :: MimeType
     , etag          :: Text -- ^ MD5 hash of the 'Object'
+    , lastModified  :: UTCTime
     }
     deriving ( Show, Eq, Generic )
 

@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeApplications #-}
 
@@ -10,46 +11,51 @@ module Network.DO.Spaces.Request
     , finalize
     ) where
 
-import           Control.Monad.Catch         ( MonadThrow(throwM) )
+import           Control.Monad.Catch             ( MonadThrow(throwM) )
 
-import           Crypto.Hash                 ( SHA256, hash )
-import           Crypto.MAC.HMAC             ( hmac )
+import           Crypto.Hash                     ( SHA256, hash )
+import           Crypto.MAC.HMAC                 ( hmac )
 
-import           Data.Bifunctor              ( first )
-import           Data.ByteArray              ( convert )
-import           Data.ByteString             ( ByteString )
-import qualified Data.ByteString.Base16      as B16
-import qualified Data.ByteString.Char8       as C
-import qualified Data.ByteString.Lazy        as LB
-import qualified Data.CaseInsensitive        as CI
-import           Data.Function               ( (&) )
-import           Data.List                   ( sort )
-import           Data.Maybe                  ( fromMaybe )
-import qualified Data.Text                   as T
+import           Data.Bifunctor                  ( first )
+import           Data.ByteArray                  ( convert )
+import           Data.ByteString                 ( ByteString )
+import qualified Data.ByteString.Base16          as B16
+import qualified Data.ByteString.Char8           as C
+import qualified Data.ByteString.Lazy            as LB
+import qualified Data.CaseInsensitive            as CI
+import           Data.Coerce                     ( coerce )
+import           Data.Function                   ( (&) )
+import           Data.Generics.Product           ( HasField(field) )
+import           Data.Generics.Product.Positions ( HasPosition(position) )
+import           Data.List                       ( sort )
+import           Data.Maybe                      ( fromMaybe )
+import qualified Data.Text                       as T
 import           Data.Time
                  ( UTCTime
                  , defaultTimeLocale
                  , formatTime
                  )
 
+import           Lens.Micro                      ( (^.) )
+
 import           Network.DO.Spaces.Types
-import           Network.DO.Spaces.Utils     ( regionSlug, toLowerBS )
+import           Network.DO.Spaces.Utils         ( regionSlug, toLowerBS )
 import           Network.HTTP.Client.Conduit
                  ( Request
                  , RequestBody(RequestBodyLBS, RequestBodyBS)
                  )
-import qualified Network.HTTP.Client.Conduit as H
-import           Network.HTTP.Types          ( Header )
-import qualified Network.HTTP.Types          as H
+import qualified Network.HTTP.Client.Conduit     as H
+import           Network.HTTP.Types              ( Header )
+import qualified Network.HTTP.Types              as H
 
--- | Extrac the 'Request' from a 'SpacesRequest' and set the requisite
+-- | Extract the 'Request' from a 'SpacesRequest' and set the requisite
 -- @Authorization@ header
 finalize :: SpacesRequest -> Authorization -> Request
 finalize sr auth = req { H.requestHeaders = authHeader : reqHeaders }
   where
     authHeader = (CI.mk "authorization", uncompute auth)
 
-    req        = sr & request
+    req        = sr ^. field @"request"
 
     reqHeaders = req & H.requestHeaders
 
@@ -62,11 +68,11 @@ newSpacesRequest SpacesRequestBuilder { .. } time = do
         $ mconcat [ show reqMethod
                   , " "
                   , "https://"
-                  , maybe mempty ((<> ".") . T.unpack . unBucket) bucket
-                  , regionSlug region
+                  , maybe mempty ((<> ".") . T.unpack . coerce) bucket
+                  , spaces ^. field @"region" & regionSlug
                   , "."
                   , "digitaloceanspaces.com/"
-                  , maybe mempty (T.unpack . unObject) object
+                  , maybe mempty (T.unpack . coerce) object
                   ]
     payload <- bodyBS $ fromMaybe (RequestBodyBS mempty) body
     let payloadHash      = hashHex payload
@@ -80,9 +86,7 @@ newSpacesRequest SpacesRequestBuilder { .. } time = do
         $ SpacesRequest
         { method = reqMethod, headers = headers <> newHeaders, .. }
   where
-    Spaces { .. } = spaces
-
-    reqMethod     = fromMaybe GET method
+    reqMethod = fromMaybe GET method
 
 -- | Canonicalize a 'Request'
 mkCanonicalized :: Request
@@ -109,7 +113,7 @@ mkStringToSign req@SpacesRequest { .. } = StringToSign
                     [ "AWS4-HMAC-SHA256"
                     , fmtAmzTime time
                     , mkCredentials req & uncompute
-                    , canonicalRequest & unCanonicalized & hashHex & uncompute
+                    , canonicalRequest & coerce & hashHex & uncompute
                     ]
 
 -- | Generate a 'Signature'
@@ -119,18 +123,16 @@ mkSignature SpacesRequest { .. } str = Signature
     . keyedHash (uncompute str)
     . keyedHash "aws4_request"
     . keyedHash "s3"
-    . keyedHash (regionSlug region)
+    . keyedHash (spaces ^. field @"region" & regionSlug)
     . keyedHash (fmtAmzDate time)
-    $ "AWS4" <> (secretKey & unSecretKey)
-  where
-    Spaces { .. } = spaces
+    $ "AWS4" <> (spaces ^. field @"secretKey" & coerce)
 
 -- | Create an 'Authorization' corresponding to the required AWS v4
 -- @Authorization@ header
 mkAuthorization :: SpacesRequest -> StringToSign -> Authorization
 mkAuthorization req@SpacesRequest { .. } str = Authorization
     $ C.concat [ "AWS4-HMAC-SHA256 Credential="
-                 <> (spaces & accessKey & unAccessKey)
+                 <> spaces ^. field @"accessKey" . position @1
                  <> "/"
                  <> uncompute cred
                , ", SignedHeaders=" <> joinHeaderNames headers
@@ -146,7 +148,7 @@ mkCredentials :: SpacesRequest -> Credentials
 mkCredentials SpacesRequest { .. } = Credentials
     $ C.intercalate "/"
                     [ fmtAmzDate time
-                    , spaces & region & regionSlug
+                    , spaces ^. field @"region" & regionSlug
                     , "s3"
                     , "aws4_request"
                     ]

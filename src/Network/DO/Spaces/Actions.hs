@@ -1,8 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
-
 {-# LANGUAGE RecordWildCards #-}
-
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 
@@ -37,6 +35,7 @@ import           Data.Time                                   ( getCurrentTime
 import           Network.DO.Spaces.Actions.CreateBucket      as M
 import           Network.DO.Spaces.Actions.DeleteBucket      as M
 import           Network.DO.Spaces.Actions.GetBucketLocation as M
+import           Network.DO.Spaces.Actions.GetObjectInfo     as M
 import           Network.DO.Spaces.Actions.ListAllBuckets    as M
 import           Network.DO.Spaces.Actions.ListBucket        as M
 import           Network.DO.Spaces.Request
@@ -84,9 +83,9 @@ runAction action = do
         when ((status & H.statusCode) >= 300)
             $ handleMaybe (parseErrorResponse status) raw >>= \case
                 Just apiErr -> throwM apiErr
-                Nothing     -> do
-                    b <- runConduit $ body .| sinkLbs
-                    throwM $ HTTPStatus status b
+                Nothing     -> throwM . HTTPStatus status
+                    =<< runConduit (body .| sinkLbs)
+
         consumeResponse @a raw
 
 parseErrorResponse
