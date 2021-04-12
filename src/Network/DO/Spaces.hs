@@ -1,3 +1,5 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -22,6 +24,7 @@ import           Network.DO.Spaces.Types
                  , Region
                  , SecretKey(..)
                  , Spaces(..)
+                 , SpacesT
                  , runSpacesT
                  )
 import           Network.HTTP.Client.TLS   ( getGlobalManager )
@@ -29,7 +32,7 @@ import           Network.HTTP.Client.TLS   ( getGlobalManager )
 import           System.Environment        ( lookupEnv )
 
 -- | For convenience; run an 'Action' with a given 'Spaces' client
-send :: (Action a, MonadUnliftIO m, MonadCatch m)
+send :: (MonadUnliftIO m, MonadCatch m, Action (SpacesT m) a)
      => a
      -> Spaces
      -> m (SpacesResponse a)

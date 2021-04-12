@@ -42,11 +42,8 @@ main = sequence_ [ requests
 
 requests :: IO ()
 requests = do
-    testSpaces
-        <- newSpaces Singapore
-                     (Explicit (AccessKey "II5JDQBAN3JYM4DNEB6C")
-                               (SecretKey "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"))
-    spacesRequest <- newSpacesRequest (testBuilder testSpaces) testTime
+    sp <- testSpaces
+    spacesRequest <- newSpacesRequest (testBuilder sp) testTime
 
     hspec . describe "Spaces requests" $ do
         it "Generates the canonical request"
@@ -113,6 +110,12 @@ requests = do
     testBucket :: Bucket
     testBucket = Bucket "a-bucket"
 
+testSpaces :: IO Spaces
+testSpaces =
+    newSpaces Singapore
+              (Explicit (AccessKey "II5JDQBAN3JYM4DNEB6C")
+                        (SecretKey "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"))
+
 errorResponse :: IO ()
 errorResponse = do
     apiEx <- withSourceFile "./tests/data/error-response.xml" $ \body -> do
@@ -135,11 +138,13 @@ errorResponse = do
 
 listAllBucketsResponse :: IO ()
 listAllBucketsResponse = do
+    sp <- testSpaces
     allBuckets
         <- withSourceFile "./tests/data/list-all-buckets.xml" $ \body -> do
             let headers = mempty
                 raw     = RawResponse { .. }
-            consumeResponse @ListAllBuckets raw
+            runSpacesT (consumeResponse @_ @ListAllBuckets raw) sp
+            -- consumeResponse @_ @ListAllBuckets raw
     bucketDate1 <- iso8601ParseM @_ @UTCTime "2017-06-23T18:37:48.157Z"
     bucketDate2 <- iso8601ParseM @_ @UTCTime "2017-06-23T18:37:48.157Z"
 
@@ -157,11 +162,12 @@ listAllBucketsResponse = do
 
 listBucketResponse :: IO ()
 listBucketResponse = do
+    sp <- testSpaces
     bucketContents
         <- withSourceFile "./tests/data/list-bucket.xml" $ \body -> do
             let headers = mempty
                 raw     = RawResponse { .. }
-            consumeResponse @ListBucket raw
+            runSpacesT (consumeResponse @_ @ListBucket raw) sp
     objectDate1 <- iso8601ParseM @_ @UTCTime "2017-07-13T18:40:46.777Z"
     objectDate2 <- iso8601ParseM @_ @UTCTime "2017-07-14T17:44:03.597Z"
     hspec
@@ -197,11 +203,12 @@ listBucketResponse = do
 
 bucketLocationResponse :: IO ()
 bucketLocationResponse = do
+    sp <- testSpaces
     bucketContents
         <- withSourceFile "./tests/data/bucket-location.xml" $ \body -> do
             let headers = mempty
                 raw     = RawResponse { .. }
-            consumeResponse @GetBucketLocation raw
+            runSpacesT (consumeResponse @_ @GetBucketLocation raw) sp
     hspec
         . describe "GetBucketLocation response"
         . it "parses GetBucketLocationResponse correctly"
@@ -210,6 +217,7 @@ bucketLocationResponse = do
 
 objectInfoResponse :: IO ()
 objectInfoResponse = do
+    sp <- testSpaces
     let body    = sourceLazy ""
         headers = [ (CI.mk "Content-Type", "text/plain")
                   , (CI.mk "Content-Length", "14")
@@ -217,7 +225,7 @@ objectInfoResponse = do
                   , (CI.mk "Last-Modified", "Thu, 13 Jul 2017 18:40:46 GMT")
                   ]
         raw     = RawResponse { .. }
-    objectInfo <- consumeResponse @GetObjectInfo raw
+    objectInfo <- runSpacesT (consumeResponse @_ @GetObjectInfo raw) sp
     hspec
         . describe "GetObjectInfo response"
         . it "parses GetObjectInfo response headers correctly"

@@ -1,10 +1,13 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 -- |
 module Network.DO.Spaces.Actions.GetObjectInfo
@@ -13,6 +16,7 @@ module Network.DO.Spaces.Actions.GetObjectInfo
     ) where
 
 import           Control.Monad.Catch       ( throwM )
+import           Control.Monad.Reader      ( MonadReader(ask) )
 import           Control.Monad.Trans.Maybe ( MaybeT(MaybeT, runMaybeT) )
 
 import qualified Data.ByteString.Char8     as C
@@ -29,6 +33,7 @@ import           Network.DO.Spaces.Types
                  , Bucket
                  , ClientException(OtherError)
                  , Method(HEAD)
+                 , MonadSpaces
                  , Object
                  , ObjectMetadata(..)
                  , SpacesRequestBuilder(..)
@@ -44,18 +49,20 @@ data GetObjectInfo = GetObjectInfo { object :: Object, bucket :: Bucket }
 
 type ObjectInfoResponse = ObjectMetadata
 
-instance Action GetObjectInfo where
+instance MonadSpaces m => Action m GetObjectInfo where
     type (SpacesResponse GetObjectInfo) = ObjectInfoResponse
 
-    buildRequest spaces GetObjectInfo { .. } = SpacesRequestBuilder
-        { bucket      = Just bucket
-        , object      = Just object
-        , method      = Just HEAD
-        , body        = Nothing
-        , queryString = Nothing
-        , headers     = mempty
-        , ..
-        }
+    buildRequest GetObjectInfo { .. } = do
+        spaces <- ask
+        return SpacesRequestBuilder
+               { bucket      = Just bucket
+               , object      = Just object
+               , method      = Just HEAD
+               , body        = Nothing
+               , queryString = Nothing
+               , headers     = mempty
+               , ..
+               }
 
     consumeResponse raw = do
         metadata <- runMaybeT

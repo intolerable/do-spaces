@@ -1,15 +1,20 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 -- |
 module Network.DO.Spaces.Actions.ListBucket
     ( ListBucket(..)
     , ListBucketResponse(..)
     ) where
+
+import           Control.Monad.Reader    ( MonadReader(ask) )
 
 import           Data.Bool               ( bool )
 import           Data.ByteString         ( ByteString )
@@ -25,6 +30,7 @@ import           GHC.Generics            ( Generic )
 import           Network.DO.Spaces.Types
                  ( Action(..)
                  , Bucket(Bucket)
+                 , MonadSpaces
                  , Object(..)
                  , ObjectInfo(..)
                  , SpacesRequestBuilder(..)
@@ -75,24 +81,27 @@ data ListBucketResponse = ListBucketResponse
     }
     deriving ( Show, Eq, Generic )
 
-instance Action ListBucket where
+instance MonadSpaces m => Action m ListBucket where
     type (SpacesResponse ListBucket) = ListBucketResponse
 
-    buildRequest spaces ListBucket { .. } = SpacesRequestBuilder
-        { bucket      = Just bucket
-        , body        = Nothing
-        , object      = Nothing
-        , method      = Nothing
-        , headers     = mempty
-        , queryString = Just
-              $ H.toQuery [ ("delimiter" :: ByteString, ) . C.singleton
-                            <$> delimiter
-                          , ("marker", ) . T.encodeUtf8 . unObject <$> marker
-                          , ("max-keys", ) . bshow <$> maxKeys
-                          , ("prefix", ) . T.encodeUtf8 <$> prefix
-                          ]
-        , ..
-        }
+    buildRequest ListBucket { .. } = do
+        spaces <- ask
+        return SpacesRequestBuilder
+               { bucket      = Just bucket
+               , body        = Nothing
+               , object      = Nothing
+               , method      = Nothing
+               , headers     = mempty
+               , queryString = Just
+                     $ H.toQuery [ ("delimiter" :: ByteString, ) . C.singleton
+                                   <$> delimiter
+                                 , ("marker", ) . T.encodeUtf8 . unObject
+                                   <$> marker
+                                 , ("max-keys", ) . bshow <$> maxKeys
+                                 , ("prefix", ) . T.encodeUtf8 <$> prefix
+                                 ]
+               , ..
+               }
 
     consumeResponse raw = do
         cursor <- xmlDocCursor raw

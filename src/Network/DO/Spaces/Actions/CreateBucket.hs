@@ -1,13 +1,18 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 -- |
 module Network.DO.Spaces.Actions.CreateBucket
     ( CreateBucket(..)
     , CreateBucketResponse
     ) where
+
+import           Control.Monad.Reader    ( MonadReader(ask) )
 
 import qualified Data.CaseInsensitive    as CI
 
@@ -18,6 +23,7 @@ import           Network.DO.Spaces.Types
                  , Bucket
                  , CannedACL
                  , Method(PUT)
+                 , MonadSpaces
                  , SpacesRequestBuilder(..)
                  )
 import           Network.DO.Spaces.Utils ( showCannedACL )
@@ -32,19 +38,22 @@ data CreateBucket = CreateBucket
 
 type CreateBucketResponse = ()
 
-instance Action CreateBucket where
+instance MonadSpaces m => Action m CreateBucket where
     type (SpacesResponse CreateBucket) = CreateBucketResponse
 
-    buildRequest spaces CreateBucket { .. } = SpacesRequestBuilder
-        { bucket      = Just bucket
-        , method      = Just PUT
-        , headers     = maybe mempty
-                              (\a -> [ (CI.mk "x-amz-acl", showCannedACL a) ])
-                              acl
-        , body        = Nothing
-        , object      = Nothing
-        , queryString = Nothing
-        , ..
-        }
+    buildRequest CreateBucket { .. } = do
+        spaces <- ask
+        return SpacesRequestBuilder
+               { bucket      = Just bucket
+               , method      = Just PUT
+               , headers     =
+                     maybe mempty
+                           (\a -> [ (CI.mk "x-amz-acl", showCannedACL a) ])
+                           acl
+               , body        = Nothing
+               , object      = Nothing
+               , queryString = Nothing
+               , ..
+               }
 
     consumeResponse _ = return ()

@@ -7,6 +7,8 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -248,12 +250,11 @@ newtype SecretKey = SecretKey { unSecretKey :: ByteString }
 
 -- Generate a 'SpacesRequestBuilder' for a given type, settings the appropriate
 -- specific 'Header's, etc..., for that type
-class Action a where
+class Monad m => Action m a where
     type SpacesResponse a :: Type
 
-    buildRequest :: Spaces -> a -> SpacesRequestBuilder
-    consumeResponse
-        :: (MonadIO m, MonadThrow m) => RawResponse m -> m (SpacesResponse a)
+    buildRequest :: a -> m SpacesRequestBuilder
+    consumeResponse :: RawResponse m -> m (SpacesResponse a)
 
 data RawResponse m =
     RawResponse { headers :: [Header], body :: ConduitT () ByteString m () }

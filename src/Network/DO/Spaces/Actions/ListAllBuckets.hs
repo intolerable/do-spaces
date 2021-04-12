@@ -1,14 +1,19 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 -- |
 module Network.DO.Spaces.Actions.ListAllBuckets
     ( ListAllBuckets(..)
     , ListAllBucketsResponse(..)
     ) where
+
+import           Control.Monad.Reader    ( MonadReader(ask) )
 
 import           Data.Coerce             ( coerce )
 import           Data.Sequence           ( Seq )
@@ -20,6 +25,7 @@ import           Network.DO.Spaces.Types
                  ( Action(..)
                  , Bucket(Bucket)
                  , BucketInfo(..)
+                 , MonadSpaces
                  , Owner(..)
                  , SpacesRequestBuilder(..)
                  )
@@ -40,18 +46,20 @@ data ListAllBucketsResponse =
     ListAllBucketsResponse { owner :: Owner, buckets :: Seq BucketInfo }
     deriving ( Show, Eq, Generic )
 
-instance Action ListAllBuckets where
+instance MonadSpaces m => Action m ListAllBuckets where
     type SpacesResponse ListAllBuckets = ListAllBucketsResponse
 
-    buildRequest spaces _ = SpacesRequestBuilder
-        { body        = Nothing
-        , method      = Nothing
-        , object      = Nothing
-        , queryString = Nothing
-        , bucket      = Nothing
-        , headers     = mempty
-        , ..
-        }
+    buildRequest _ = do
+        spaces <- ask
+        return SpacesRequestBuilder
+               { body        = Nothing
+               , method      = Nothing
+               , object      = Nothing
+               , queryString = Nothing
+               , bucket      = Nothing
+               , headers     = mempty
+               , ..
+               }
 
     consumeResponse raw = do
         cursor <- xmlDocCursor raw

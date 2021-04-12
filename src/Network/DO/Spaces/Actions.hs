@@ -24,8 +24,6 @@ import           Control.Monad.Catch
                  )
 import           Control.Monad.IO.Class                      ( MonadIO(liftIO)
                                                              )
-import           Control.Monad.Reader.Class                  ( MonadReader(ask)
-                                                             )
 
 import           Data.Conduit.Binary                         ( sinkLbs )
 import           Data.Function                               ( (&) )
@@ -66,11 +64,11 @@ import           Text.XML.Cursor                             ( ($/), (&/) )
 
 -- | Run an instance of 'Action', receiving a 'SpacesResponse'
 runAction
-    :: forall a m. (MonadSpaces m, Action a) => a -> m (SpacesResponse a)
+    :: forall a m. (MonadSpaces m, Action m a) => a -> m (SpacesResponse a)
 runAction action = do
-    spaces <- ask
     now <- liftIO getCurrentTime
-    req <- newSpacesRequest (buildRequest spaces action) now
+    reqBuilder <- buildRequest @_ @a action
+    req <- newSpacesRequest reqBuilder now
     let stringToSign = mkStringToSign req
         auth         = mkAuthorization req stringToSign
         finalized    = finalize req auth
@@ -86,7 +84,7 @@ runAction action = do
                 Nothing     -> throwM . HTTPStatus status
                     =<< runConduit (body .| sinkLbs)
 
-        consumeResponse @a raw
+        consumeResponse @_ @a raw
 
 parseErrorResponse
     :: (MonadThrow m, MonadIO m) => Status -> RawResponse m -> m APIException

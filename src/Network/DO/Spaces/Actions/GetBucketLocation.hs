@@ -1,9 +1,13 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
+
 
 -- |
 module Network.DO.Spaces.Actions.GetBucketLocation
@@ -16,12 +20,13 @@ import           Data.ByteString         ( ByteString )
 
 import           GHC.Generics            ( Generic )
 
+
 import           Network.DO.Spaces.Types
                  ( Action(..)
                  , Bucket
                  , Region(..)
                  , ClientException(OtherError)
-                 , SpacesRequestBuilder(..)
+                 , SpacesRequestBuilder(..), MonadSpaces
                  )
 import           Network.DO.Spaces.Utils ( xmlAttrError, xmlDocCursor )
 import qualified Network.HTTP.Types      as H
@@ -30,6 +35,7 @@ import qualified Text.XML.Cursor         as X
 import           Text.XML.Cursor         ( ($.//), (&/), (&|) )
 import qualified Data.Text as T
 import Control.Monad.Catch (MonadThrow(throwM))
+import Control.Monad.Reader (MonadReader(ask))
 
 -- | Query the location (the 'Region') of a 'Bucket'
 data GetBucketLocation = GetBucketLocation
@@ -43,10 +49,12 @@ data GetBucketLocationResponse = GetBucketLocationResponse
     }
     deriving ( Show, Eq, Generic )
 
-instance Action GetBucketLocation where
+instance MonadSpaces m => Action m GetBucketLocation where
     type (SpacesResponse GetBucketLocation) = GetBucketLocationResponse
 
-    buildRequest spaces GetBucketLocation { .. } = SpacesRequestBuilder
+    buildRequest GetBucketLocation { .. } = do
+      spaces <- ask
+      return SpacesRequestBuilder
         { bucket      = Just bucket
         , method      = Nothing
         , body        = Nothing
