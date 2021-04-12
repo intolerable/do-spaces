@@ -4,4 +4,5 @@ dist-newstyle/**
 *.ps
 *.hp
 *.aux
+.envrc
 TODO.org
