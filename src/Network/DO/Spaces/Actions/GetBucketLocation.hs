@@ -8,34 +8,33 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-
 -- |
 module Network.DO.Spaces.Actions.GetBucketLocation
     ( GetBucketLocation(..)
     , GetBucketLocationResponse(..)
     ) where
 
+import           Control.Monad.Catch     ( MonadThrow(throwM) )
+import           Control.Monad.Reader    ( MonadReader(ask) )
 
 import           Data.ByteString         ( ByteString )
+import qualified Data.Text               as T
 
 import           GHC.Generics            ( Generic )
-
 
 import           Network.DO.Spaces.Types
                  ( Action(..)
                  , Bucket
-                 , Region(..)
                  , ClientException(OtherError)
-                 , SpacesRequestBuilder(..), MonadSpaces
+                 , MonadSpaces
+                 , Region(..)
+                 , SpacesRequestBuilder(..)
                  )
-import           Network.DO.Spaces.Utils ( xmlAttrError, xmlDocCursor )
+import           Network.DO.Spaces.Utils ( quote, xmlAttrError, xmlDocCursor )
 import qualified Network.HTTP.Types      as H
 
 import qualified Text.XML.Cursor         as X
 import           Text.XML.Cursor         ( ($.//), (&/), (&|) )
-import qualified Data.Text as T
-import Control.Monad.Catch (MonadThrow(throwM))
-import Control.Monad.Reader (MonadReader(ask))
 
 -- | Query the location (the 'Region') of a 'Bucket'
 data GetBucketLocation = GetBucketLocation
@@ -45,7 +44,8 @@ data GetBucketLocation = GetBucketLocation
     deriving ( Show, Eq, Generic )
 
 data GetBucketLocationResponse = GetBucketLocationResponse
-    { locationConstraint :: Region -- ^ The 'Region' of the queried 'Bucket'
+    { locationConstraint :: Region
+      -- ^ The 'Region' of the queried 'Bucket'
     }
     deriving ( Show, Eq, Generic )
 
@@ -53,20 +53,20 @@ instance MonadSpaces m => Action m GetBucketLocation where
     type (SpacesResponse GetBucketLocation) = GetBucketLocationResponse
 
     buildRequest GetBucketLocation { .. } = do
-      spaces <- ask
-      return SpacesRequestBuilder
-        { bucket      = Just bucket
-        , method      = Nothing
-        , body        = Nothing
-        , object      = Nothing
-        , headers     = mempty
-        , queryString = Just
-              $ H.toQuery [ ( "location" :: ByteString
-                            , Nothing :: Maybe ByteString
-                            )
-                          ]
-        , ..
-        }
+        spaces <- ask
+        return SpacesRequestBuilder
+               { bucket      = Just bucket
+               , method      = Nothing
+               , body        = Nothing
+               , object      = Nothing
+               , headers     = mempty
+               , queryString = Just
+                     $ H.toQuery [ ( "location" :: ByteString
+                                   , Nothing :: Maybe ByteString
+                                   )
+                                 ]
+               , ..
+               }
 
     consumeResponse raw = do
         cursor <- xmlDocCursor raw
@@ -81,4 +81,5 @@ instance MonadSpaces m => Action m GetBucketLocation where
             "sfo3" -> return SanFrancisco
             "sgp1" -> return Singapore
             "fra1" -> return Frankfurt
-            reg    -> throwM . OtherError $ "Unrecognized region: " <> reg
+            reg    -> throwM . OtherError
+                $ "GetBucketLocation: unrecognized region " <> quote reg
