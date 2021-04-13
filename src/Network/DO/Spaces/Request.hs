@@ -96,8 +96,7 @@ mkCanonicalized request payloadHash = Canonicalized
     $ C.intercalate "\n"
                     [ request & H.method
                     , request & H.path
-                      -- TODO fix query params, strip leading '?'
-                    , request & H.queryString
+                    , request & H.queryString & C.dropWhile ('?' ==)
                     , request
                       & H.requestHeaders
                       & canonicalizeHeaders
