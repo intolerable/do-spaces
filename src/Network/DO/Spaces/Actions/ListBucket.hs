@@ -14,6 +14,9 @@ module Network.DO.Spaces.Actions.ListBucket
     , ListBucketResponse(..)
     ) where
 
+import           Control.Monad           ( when )
+import           Control.Monad.Catch     ( MonadThrow(throwM) )
+import           Control.Monad.Extra     ( orM )
 import           Control.Monad.Reader    ( MonadReader(ask) )
 
 import           Data.Bool               ( bool )
@@ -30,6 +33,7 @@ import           GHC.Generics            ( Generic )
 import           Network.DO.Spaces.Types
                  ( Action(..)
                  , Bucket(Bucket)
+                 , ClientException(OtherError)
                  , MonadSpaces
                  , Object(..)
                  , ObjectInfo(..)
@@ -56,7 +60,8 @@ data ListBucket = ListBucket
     , delimiter :: Maybe Char -- ^ Character used to group keys
     , marker    :: Maybe Object
       -- ^ The 'Object' to start with when listing the bucket's contents
-    , maxKeys   :: Maybe Int -- ^ Max number of 'Object's to return (inclusive)
+    , maxKeys   :: Maybe Int
+      -- ^ Max number of 'Object's to return, between 0 and 1,000 (inclusive)
     , prefix    :: Maybe Text
       -- ^ String value to group keys. Only objects whose names begin with the
       -- prefix are returned
@@ -76,7 +81,7 @@ data ListBucketResponse = ListBucketResponse
       -- ^ Maximum number of 'ObjectInfo's to include; based on request parameter
       -- of the same name
     , isTruncated :: Bool
-      -- ^ Indicates whether the response contains all 'Object's
+      -- ^ Indicates whether the response contains all possible 'Object's
     , objects     :: Seq ObjectInfo
     }
     deriving ( Show, Eq, Generic )
@@ -85,7 +90,11 @@ instance MonadSpaces m => Action m ListBucket where
     type (SpacesResponse ListBucket) = ListBucketResponse
 
     buildRequest ListBucket { .. } = do
+        when (Just True == orM [ (< 0) <$> maxKeys, (> 1000) <$> maxKeys ])
+            . throwM
+            $ OtherError "ListBucket: maxKeys must be >= 0 && <= 1000"
         spaces <- ask
+
         return SpacesRequestBuilder
                { bucket      = Just bucket
                , body        = Nothing

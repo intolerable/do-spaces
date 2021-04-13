@@ -39,6 +39,7 @@ library
     , containers         ^>=0.6
     , cryptonite         >=0.25    && <0.29
     , exceptions         ^>=0.10
+    , extra              >=1.6     && <1.8
     , generic-lens       >=1.1     && <2.2
     , http-client-tls    ^>=0.3.5
     , http-conduit       ^>=2.3
