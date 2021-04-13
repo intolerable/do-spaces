@@ -41,10 +41,10 @@ import           Network.DO.Spaces.Types
                  )
 import           Network.DO.Spaces.Utils
                  ( bshow
+                 , etagP
+                 , lastModifiedP
                  , ownerP
-                 , unquote
                  , xmlAttrError
-                 , xmlDatetimeP
                  , xmlDocCursor
                  , xmlIntP
                  , xmlMaybeField
@@ -132,11 +132,8 @@ instance MonadSpaces m => Action m ListBucket where
         objectInfoP c = do
             object <- X.force (xmlAttrError "Key")
                 $ c $/ X.laxElement "Key" &/ X.content &| coerce
-            lastModified <- X.forceM (xmlAttrError "LastModified")
-                $ c $/ X.laxElement "LastModified" &/ X.content
-                &| xmlDatetimeP
-            etag <- X.force (xmlAttrError "ETag")
-                $ c $/ X.laxElement "ETag" &/ X.content &| unquote
+            lastModified <- lastModifiedP c
+            etag <- etagP c
             size <- X.forceM (xmlAttrError "Size")
                 $ c $/ X.laxElement "Size" &/ X.content &| xmlIntP
             owner <- X.forceM (xmlAttrError "Owner")

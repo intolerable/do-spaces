@@ -16,7 +16,9 @@ import           Data.Time.Format.ISO8601  ( iso8601ParseM )
 
 import           Network.DO.Spaces         ( newSpaces )
 import           Network.DO.Spaces.Actions
-                 ( GetBucketLocation
+                 ( CopyObject
+                 , CopyObjectResponse(..)
+                 , GetBucketLocation
                  , GetBucketLocationResponse(..)
                  , GetObjectInfo
                  , ListAllBuckets
@@ -35,9 +37,11 @@ main :: IO ()
 main = sequence_ [ requests
                  , errorResponse
                  , listAllBucketsResponse
+                   -- TODO make sure this throws on incorrect maxKey
                  , listBucketResponse
                  , bucketLocationResponse
                  , objectInfoResponse
+                 , copyObject
                  ]
 
 requests :: IO ()
@@ -238,3 +242,22 @@ objectInfoResponse = do
         }
   where
     testTime = read @UTCTime "2017-07-13 18:40:46 +0000"
+
+-- TODO make sure this throws if directive is wrong for src/dest
+copyObject :: IO ()
+copyObject = do
+    sp <- testSpaces
+    copyObjectDate <- iso8601ParseM @_ @UTCTime "2017-07-10T20:22:54.167Z"
+    copyObjectResp
+        <- withSourceFile "./tests/data/copy-object.xml" $ \body -> do
+            let headers = mempty
+                raw     = RawResponse { .. }
+            runSpacesT (consumeResponse @_ @CopyObject raw) sp
+    hspec $ describe "CopyObject request/response" $ do
+        it "parses CopyObjectResponse correctly"
+            $ copyObjectResp
+            `shouldBe` CopyObjectResponse
+            { lastModified = copyObjectDate
+            , etag         = "7967bfe102f83fb5fc7e5a02bf05e8fc"
+            }
+

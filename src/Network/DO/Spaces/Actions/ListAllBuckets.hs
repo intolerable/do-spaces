@@ -32,8 +32,8 @@ import           Network.DO.Spaces.Types
 import           Network.DO.Spaces.Utils
                  ( ownerP
                  , xmlAttrError
-                 , xmlDatetimeP
                  , xmlDocCursor
+                 , xmlUTCTimeP
                  )
 
 import qualified Text.XML.Cursor         as X
@@ -76,6 +76,5 @@ instance MonadSpaces m => Action m ListAllBuckets where
             name <- X.force (xmlAttrError "Name")
                 $ c $/ X.laxElement "Name" &/ X.content &| coerce
             creationDate <- X.forceM (xmlAttrError "Creation date")
-                $ c $/ X.laxElement "CreationDate" &/ X.content
-                &| xmlDatetimeP
+                $ c $/ X.laxElement "CreationDate" &/ X.content &| xmlUTCTimeP
             return BucketInfo { .. }

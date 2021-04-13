@@ -57,6 +57,7 @@ library
   exposed-modules:
     Network.DO.Spaces
     Network.DO.Spaces.Actions
+    Network.DO.Spaces.Actions.CopyObject
     Network.DO.Spaces.Actions.CreateBucket
     Network.DO.Spaces.Actions.DeleteBucket
     Network.DO.Spaces.Actions.GetBucketLocation

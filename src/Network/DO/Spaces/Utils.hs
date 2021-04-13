@@ -9,7 +9,7 @@ module Network.DO.Spaces.Utils
     , toLowerBS
     , xmlIntP
     , xmlAttrError
-    , xmlDatetimeP
+    , xmlUTCTimeP
     , bshow
     , ownerP
     , xmlDocCursor
@@ -19,6 +19,8 @@ module Network.DO.Spaces.Utils
     , unquote
     , eitherToMaybe
     , quote
+    , etagP
+    , lastModifiedP
     ) where
 
 import           Conduit                  ( (.|), runConduit )
@@ -89,12 +91,22 @@ xmlDocCursor :: (MonadIO m, MonadThrow m) => RawResponse m -> m X.Cursor
 xmlDocCursor RawResponse { .. } = X.fromDocument
     <$> runConduit (body .| X.sinkDoc X.def)
 
--- | XML parser for recurring 'Owner' attribute
+-- | XML parser for 'Owner' attribute
 ownerP :: MonadThrow m => Cursor Node -> m Owner
 ownerP c = do
     id' <- X.forceM (xmlAttrError "ID")
         $ c $/ X.laxElement "ID" &/ X.content &| xmlIntP @_ @OwnerID
     return Owner { displayName = id', id' }
+
+-- | XML parser for 'ETag' attribute
+etagP :: MonadThrow m => Cursor Node -> m ETag
+etagP c = X.force (xmlAttrError "ETag")
+    $ c $/ X.laxElement "ETag" &/ X.content &| unquote
+
+-- | XML parser for @LastModified@ attribute
+lastModifiedP :: MonadThrow m => Cursor Node -> m UTCTime
+lastModifiedP c = X.forceM (xmlAttrError "LastModified")
+    $ c $/ X.laxElement "LastModified" &/ X.content &| xmlUTCTimeP
 
 -- | Parse some 'Num' type from 'Text'
 xmlIntP :: (MonadThrow m, Num a) => Text -> m a
@@ -103,8 +115,8 @@ xmlIntP txt = case readMaybe $ T.unpack txt of
     Nothing -> throwM $ InvalidXML "Failed to read integer value"
 
 -- | Parse 'UTCTime' from an 'ISO8601'-formatted 'Text'
-xmlDatetimeP :: MonadThrow m => Text -> m UTCTime
-xmlDatetimeP txt = case iso8601ParseM $ T.unpack txt of
+xmlUTCTimeP :: MonadThrow m => Text -> m UTCTime
+xmlUTCTimeP txt = case iso8601ParseM $ T.unpack txt of
     Just t  -> return t
     Nothing -> throwM $ InvalidXML "Failed to read ISO-8601 value"
 

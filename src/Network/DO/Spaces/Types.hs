@@ -54,6 +54,7 @@ module Network.DO.Spaces.Types
     , ClientException(..)
     , SpacesException(..)
     , APIException(..)
+    , ETag
     ) where
 
 import           Conduit                     ( ConduitT, MonadUnliftIO )
@@ -180,7 +181,7 @@ mkObject = mkName Object "Object"
 data ObjectInfo = ObjectInfo
     { object       :: Object
     , lastModified :: UTCTime
-    , etag         :: Text -- ^ MD5 hash of the 'Object'
+    , etag         :: ETag
     , size         :: Int -- ^ Size in bytes
     , owner        :: Owner
     }
@@ -190,7 +191,7 @@ data ObjectInfo = ObjectInfo
 data ObjectMetadata = ObjectMetadata
     { contentLength :: Int -- ^ length in bytes
     , contentType   :: MimeType
-    , etag          :: Text -- ^ MD5 hash of the 'Object'
+    , etag          :: ETag
     , lastModified  :: UTCTime
     }
     deriving ( Show, Eq, Generic )
@@ -206,6 +207,9 @@ newtype OwnerID = OwnerID { unOwnerID :: Int }
 -- | The display name is always equivalent to the owner's ID; Spaces includes
 -- it for AWS compatibility
 type DisplayName = OwnerID
+
+-- | MD5 hash of an 'Object'
+type ETag = Text
 
 -- | Represents some resource that has been canonicalized according to the
 -- Spaces/AWS v4 spec
