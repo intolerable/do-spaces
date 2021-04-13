@@ -18,6 +18,7 @@ module Network.DO.Spaces.Utils
     , handleMaybe
     , unquote
     , eitherToMaybe
+    , quote
     ) where
 
 import           Conduit                  ( (.|), runConduit )
@@ -68,6 +69,9 @@ bshow = C.pack . show
 -- | Strip leading and trailing double quotes from a 'Text'
 unquote :: Text -> Text
 unquote = T.dropAround ('"' ==)
+
+quote :: (IsString a, Monoid a) => a -> a
+quote x = "\"" <> x <> "\""
 
 eitherToMaybe :: Either a b -> Maybe b
 eitherToMaybe (Right x) = Just x

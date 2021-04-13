@@ -40,7 +40,9 @@ module Network.DO.Spaces.Types
     , uncompute
       -- * Buckets and Objects
     , Object(..)
+    , mkObject
     , Bucket(..)
+    , mkBucket
     , BucketInfo(..)
     , OwnerID(..)
     , DisplayName
@@ -60,7 +62,9 @@ import           Control.Exception
                  ( Exception(toException, fromException)
                  , SomeException
                  )
-import           Control.Monad.Catch         ( MonadCatch, MonadThrow )
+import           Control.Monad.Catch         ( MonadCatch
+                                             , MonadThrow(throwM)
+                                             )
 import           Control.Monad.IO.Class      ( MonadIO )
 import           Control.Monad.Reader        ( MonadReader
                                              , ReaderT(ReaderT, runReaderT)
@@ -147,15 +151,29 @@ data Region
 data Method = GET | POST | PUT | DELETE | HEAD
     deriving ( Show, Eq, Generic )
 
+mkName :: MonadThrow m => (Text -> a) -> Text -> Text -> m a
+mkName _ ty "" = throwM . OtherError $ ty <> ": Name must not be empty"
+mkName f _ x   = return $ f x
+
+-- | The name of a single storage bucket
 newtype Bucket = Bucket { unBucket :: Text }
     deriving ( Show, Eq, Generic )
 
+-- | Smart constructor for 'Bucket's; names must not be empty
+mkBucket :: MonadThrow m => Text -> m Bucket
+mkBucket = mkName Bucket "Bucket"
+
+-- | Information about a single 'Bucket'
 data BucketInfo = BucketInfo { name :: Bucket, creationDate :: UTCTime }
     deriving ( Show, Eq, Generic )
 
--- | A \"key\", in AWS parlance
+-- | The name of a \"key\", in AWS parlance
 newtype Object = Object { unObject :: Text }
     deriving ( Show, Eq, Generic )
+
+-- | Smart constructor for 'Object's; names must not be empty
+mkObject :: MonadThrow m => Text -> m Object
+mkObject = mkName Object "Object"
 
 -- | Information about a single 'Object', returned when listing a 'Bucket''s
 -- contents
@@ -177,9 +195,11 @@ data ObjectMetadata = ObjectMetadata
     }
     deriving ( Show, Eq, Generic )
 
+-- | The resource owner
 data Owner = Owner { id' :: OwnerID, displayName :: DisplayName }
     deriving ( Show, Eq, Generic )
 
+-- | The ID of an 'Owner'; also serves as a display name in Spaces
 newtype OwnerID = OwnerID { unOwnerID :: Int }
     deriving ( Show, Eq, Generic, Num )
 
