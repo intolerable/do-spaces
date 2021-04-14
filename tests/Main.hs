@@ -16,29 +16,35 @@ import           Data.Time.Format.ISO8601  ( iso8601ParseM )
 
 import           Network.DO.Spaces         ( newSpaces )
 import           Network.DO.Spaces.Actions
-                 ( CopyObject
+                 ( CopyObject(..)
                  , CopyObjectResponse(..)
                  , GetBucketLocation
                  , GetBucketLocationResponse(..)
                  , GetObjectInfo
                  , ListAllBuckets
                  , ListAllBucketsResponse(..)
-                 , ListBucket
+                 , ListBucket(..)
                  , ListBucketResponse(..)
+                 , MetadataDirective(Copy)
                  , parseErrorResponse
                  )
 import           Network.DO.Spaces.Request
 import           Network.DO.Spaces.Types
 import           Network.HTTP.Types        ( mkStatus )
 
-import           Test.Hspec                ( describe, hspec, it, shouldBe )
+import           Test.Hspec
+                 ( describe
+                 , hspec
+                 , it
+                 , shouldBe
+                 , shouldThrow
+                 )
 
 main :: IO ()
 main = sequence_ [ requests
                  , errorResponse
                  , listAllBucketsResponse
-                   -- TODO make sure this throws on incorrect maxKey
-                 , listBucketResponse
+                 , listBucket
                  , bucketLocationResponse
                  , objectInfoResponse
                  , copyObject
@@ -164,8 +170,8 @@ listAllBucketsResponse = do
                          ]
         }
 
-listBucketResponse :: IO ()
-listBucketResponse = do
+listBucket :: IO ()
+listBucket = do
     sp <- testSpaces
     bucketContents
         <- withSourceFile "./tests/data/list-bucket.xml" $ \body -> do
@@ -174,11 +180,29 @@ listBucketResponse = do
             runSpacesT (consumeResponse @_ @ListBucket raw) sp
     objectDate1 <- iso8601ParseM @_ @UTCTime "2017-07-13T18:40:46.777Z"
     objectDate2 <- iso8601ParseM @_ @UTCTime "2017-07-14T17:44:03.597Z"
-    hspec
-        . describe "ListBucket response"
-        . it "parses ListBucketResponse correctly"
-        $ bucketContents
-        `shouldBe` ListBucketResponse
+    hspec . describe "ListBucket response" $ do
+        it "parses ListBucketResponse correctly"
+            $ bucketContents `shouldBe` listBucketResp objectDate1 objectDate2
+
+        it "ensures maxKeys is within the correct range" $ do
+            let badReq  = listBucketReq $ Just (-1)
+                badReq2 = listBucketReq $ Just 1001
+            runSpacesT (buildRequest badReq) sp
+                `shouldThrow` (OtherError msg ==)
+            runSpacesT (buildRequest badReq2) sp
+                `shouldThrow` (OtherError msg ==)
+  where
+    listBucketReq maxKeys = ListBucket
+        { bucket    = Bucket "some-bucket"
+        , delimiter = Nothing
+        , marker    = Nothing
+        , prefix    = Nothing
+        , maxKeys
+        }
+
+    msg                   = "ListBucket: maxKeys must be >= 0 && <= 1000"
+
+    listBucketResp d1 d2 = ListBucketResponse
         { bucket      = Bucket "static-images"
         , prefix      = Nothing
         , marker      = Nothing
@@ -188,7 +212,7 @@ listBucketResponse = do
         , objects     =
               S.fromList [ ObjectInfo
                            { object       = Object "example.txt"
-                           , lastModified = objectDate1
+                           , lastModified = d1
                            , etag         = "b3a92f49e7ae64acbf6b3e76f2040f5e"
                            , size         = 14
                            , owner        =
@@ -196,7 +220,7 @@ listBucketResponse = do
                            }
                          , ObjectInfo
                            { object       = Object "sammy.png"
-                           , lastModified = objectDate2
+                           , lastModified = d2
                            , etag         = "fb08934ef619f205f272b0adfd6c018c"
                            , size         = 35369
                            , owner        =
@@ -243,7 +267,6 @@ objectInfoResponse = do
   where
     testTime = read @UTCTime "2017-07-13 18:40:46 +0000"
 
--- TODO make sure this throws if directive is wrong for src/dest
 copyObject :: IO ()
 copyObject = do
     sp <- testSpaces
@@ -253,7 +276,8 @@ copyObject = do
             let headers = mempty
                 raw     = RawResponse { .. }
             runSpacesT (consumeResponse @_ @CopyObject raw) sp
-    hspec $ describe "CopyObject request/response" $ do
+
+    hspec . describe "CopyObject request/response" $ do
         it "parses CopyObjectResponse correctly"
             $ copyObjectResp
             `shouldBe` CopyObjectResponse
@@ -261,3 +285,24 @@ copyObject = do
             , etag         = "7967bfe102f83fb5fc7e5a02bf05e8fc"
             }
 
+        it "ensures the correct metadataDirective is provided"
+            $ runSpacesT (buildRequest badReq) sp
+            `shouldThrow` (OtherError msg ==)
+  where
+    badReq    = CopyObject
+        { srcBucket
+        , srcObject
+        , destBucket        = srcBucket
+        , destObject        = srcObject
+        , metadataDirective = Copy
+        , acl               = Nothing
+        }
+
+    srcObject = Object "some-object"
+
+    srcBucket = Bucket "some-bucket"
+
+    msg       = mconcat [ "CopyObject: "
+                        , "Object cannot be copied to itself unless "
+                        , "REPLACE directive is specified"
+                        ]
