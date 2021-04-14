@@ -119,10 +119,10 @@ data SpacesRequest = SpacesRequest
     , headers          :: [Header]
       -- ^ Obligatory 'Header's that will be added to the request
     , method           :: Method -- ^ The HTTP 'Method'
-    , payload          :: ByteString
-      -- ^ A 'RequestBody' read into a strict 'ByteString'
-    , payloadHash      :: Hashed -- ^ The SHA256 hash of the 'RequestBody'
-    , canonicalRequest :: Canonicalized Request -- ^ The canonicalized HTTP 'Request'
+    , payloadHash      :: Hashed
+      -- ^ The SHA256 hash of the 'RequestBody' contents
+    , canonicalRequest :: Canonicalized Request
+      -- ^ The canonicalized HTTP 'Request'
     , time             :: UTCTime
     }
     deriving ( Generic )

@@ -60,10 +60,12 @@ library
     Network.DO.Spaces.Actions.CopyObject
     Network.DO.Spaces.Actions.CreateBucket
     Network.DO.Spaces.Actions.DeleteBucket
+    Network.DO.Spaces.Actions.DeleteObject
     Network.DO.Spaces.Actions.GetBucketLocation
     Network.DO.Spaces.Actions.GetObjectInfo
     Network.DO.Spaces.Actions.ListAllBuckets
     Network.DO.Spaces.Actions.ListBucket
+    Network.DO.Spaces.Actions.UploadObject
     Network.DO.Spaces.Request
     Network.DO.Spaces.Types
     Network.DO.Spaces.Utils

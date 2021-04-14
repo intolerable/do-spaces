@@ -13,7 +13,7 @@ module Network.DO.Spaces.Request
 
 import           Control.Monad.Catch             ( MonadThrow(throwM) )
 
-import           Crypto.Hash                     ( SHA256, hash )
+import           Crypto.Hash                     ( SHA256, hashlazy )
 import           Crypto.MAC.HMAC                 ( hmac )
 
 import           Data.Bifunctor                  ( first )
@@ -74,7 +74,7 @@ newSpacesRequest SpacesRequestBuilder { .. } time = do
                   , "digitaloceanspaces.com/"
                   , maybe mempty (T.unpack . coerce) object
                   ]
-    payload <- bodyBS $ fromMaybe (RequestBodyBS mempty) body
+    payload <- bodyLBS $ fromMaybe (RequestBodyBS mempty) body
     let payloadHash      = hashHex payload
         newHeaders       = overrideReqHeaders req payloadHash time
         request          = req
@@ -112,7 +112,11 @@ mkStringToSign req@SpacesRequest { .. } = StringToSign
                     [ "AWS4-HMAC-SHA256"
                     , fmtAmzTime time
                     , mkCredentials req & uncompute
-                    , canonicalRequest & coerce & hashHex & uncompute
+                    , canonicalRequest
+                      & coerce
+                      & LB.fromStrict
+                      & hashHex
+                      & uncompute
                     ]
 
 -- | Generate a 'Signature'
@@ -152,10 +156,10 @@ mkCredentials SpacesRequest { .. } = Credentials
                     , "aws4_request"
                     ]
 
-bodyBS :: MonadThrow m => RequestBody -> m ByteString
-bodyBS (RequestBodyBS b)   = return b
-bodyBS (RequestBodyLBS lb) = return $ LB.toStrict lb
-bodyBS _                   =
+bodyLBS :: MonadThrow m => RequestBody -> m LB.ByteString
+bodyLBS (RequestBodyBS b)   = return $ LB.fromStrict b
+bodyLBS (RequestBodyLBS lb) = return lb
+bodyLBS _                   =
     throwM $ InvalidRequest "Unsupported request body type"
 
 -- | Required to override @http-client@ automatically setting the Content-Length header and
@@ -193,5 +197,5 @@ fmtAmzTime = C.pack . formatTime defaultTimeLocale "%Y%m%dT%H%M%SZ"
 keyedHash :: ByteString -> ByteString -> ByteString
 keyedHash bs k = convert $ hmac @_ @_ @SHA256 k bs
 
-hashHex :: ByteString -> Hashed
-hashHex = Hashed . B16.encode . convert . hash @_ @SHA256
+hashHex :: LB.ByteString -> Hashed
+hashHex = Hashed . B16.encode . convert . hashlazy @SHA256

@@ -7,9 +7,9 @@
 -- |
 module Network.DO.Spaces.Actions
     ( runAction
+    , parseErrorResponse
       -- * Re-exports
     , module M
-    , parseErrorResponse
     ) where
 
 import           Conduit
@@ -33,6 +33,7 @@ import           Data.Time                                   ( getCurrentTime
 import           Network.DO.Spaces.Actions.CopyObject        as M
 import           Network.DO.Spaces.Actions.CreateBucket      as M
 import           Network.DO.Spaces.Actions.DeleteBucket      as M
+import           Network.DO.Spaces.Actions.DeleteObject      as M
 import           Network.DO.Spaces.Actions.GetBucketLocation as M
 import           Network.DO.Spaces.Actions.GetObjectInfo     as M
 import           Network.DO.Spaces.Actions.ListAllBuckets    as M
