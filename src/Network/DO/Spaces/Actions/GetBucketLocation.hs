@@ -55,12 +55,13 @@ instance MonadSpaces m => Action m GetBucketLocation where
     buildRequest GetBucketLocation { .. } = do
         spaces <- ask
         return SpacesRequestBuilder
-               { bucket      = Just bucket
-               , method      = Nothing
-               , body        = Nothing
-               , object      = Nothing
-               , headers     = mempty
-               , queryString = Just
+               { bucket         = Just bucket
+               , method         = Nothing
+               , body           = Nothing
+               , object         = Nothing
+               , headers        = mempty
+               , overrideRegion = Nothing
+               , queryString    = Just
                      $ H.toQuery [ ( "location" :: ByteString
                                    , Nothing :: Maybe ByteString
                                    )

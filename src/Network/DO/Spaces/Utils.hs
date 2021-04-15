@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -13,7 +14,7 @@ module Network.DO.Spaces.Utils
     , bshow
     , ownerP
     , xmlDocCursor
-    , xmlMaybeField
+    , xmlMaybeAttr
     , showCannedACL
     , handleMaybe
     , unquote
@@ -21,35 +22,51 @@ module Network.DO.Spaces.Utils
     , quote
     , etagP
     , lastModifiedP
+    , objectMetadataP
+    , bodyLBS
+    , tshow
     ) where
 
-import           Conduit                  ( (.|), runConduit )
+import           Conduit                   ( (.|), runConduit )
 
 import           Control.Monad.Catch
                  ( MonadCatch
                  , MonadThrow(throwM)
                  , handleAll
                  )
-import           Control.Monad.IO.Class   ( MonadIO )
+import           Control.Monad.IO.Class    ( MonadIO )
+import           Control.Monad.Trans.Maybe ( MaybeT(MaybeT, runMaybeT) )
 
-import           Data.ByteString          ( ByteString )
-import qualified Data.ByteString.Char8    as C
-import           Data.Char                ( toLower )
-import           Data.Maybe               ( listToMaybe )
-import           Data.String              ( IsString )
-import           Data.Text                ( Text )
-import qualified Data.Text                as T
-import           Data.Time                ( UTCTime )
-import           Data.Time.Format.ISO8601 ( iso8601ParseM )
+import           Data.ByteString           ( ByteString )
+import qualified Data.ByteString.Char8     as C
+import qualified Data.ByteString.Lazy      as LB
+import           Data.Char                 ( toLower )
+import           Data.Generics.Product     ( HasField(field) )
+import           Data.Maybe                ( listToMaybe )
+import           Data.String               ( IsString )
+import           Data.Text                 ( Text )
+import qualified Data.Text                 as T
+import qualified Data.Text.Encoding        as T
+import           Data.Time
+                 ( UTCTime
+                 , defaultTimeLocale
+                 , parseTimeM
+                 )
+import           Data.Time.Format.ISO8601  ( iso8601ParseM )
+
+import           Lens.Micro                ( (^.) )
 
 import           Network.DO.Spaces.Types
+import           Network.HTTP.Conduit
+                 ( RequestBody(RequestBodyBS, RequestBodyLBS)
+                 )
 
-import           Text.Read                ( readMaybe )
-import           Text.XML                 ( Node )
-import qualified Text.XML                 as X
-import qualified Text.XML.Cursor          as X
-import           Text.XML.Cursor          ( ($/), (&/), (&|) )
-import           Text.XML.Cursor.Generic  ( Cursor )
+import           Text.Read                 ( readMaybe )
+import           Text.XML                  ( Node )
+import qualified Text.XML                  as X
+import qualified Text.XML.Cursor           as X
+import           Text.XML.Cursor           ( ($/), (&/), (&|) )
+import           Text.XML.Cursor.Generic   ( Cursor )
 
 -- | Convert a 'Region' to its equivalent slug
 regionSlug :: IsString a => Region -> a
@@ -67,6 +84,10 @@ toLowerBS = C.pack . fmap toLower . C.unpack
 -- | Show a 'ByteString'
 bshow :: Show a => a -> ByteString
 bshow = C.pack . show
+
+-- | Show some 'Text'
+tshow :: Show a => a -> Text
+tshow = T.pack . show
 
 -- | Strip leading and trailing double quotes from a 'Text'
 unquote :: Text -> Text
@@ -86,6 +107,13 @@ showCannedACL = \case
 
 handleMaybe :: MonadCatch m => (a -> m b) -> a -> m (Maybe b)
 handleMaybe g x = handleAll (\_ -> return Nothing) (Just <$> g x)
+
+-- | Convert a 'RequestBody' to a 'Data.ByteString.Lazy.ByteString'
+bodyLBS :: MonadThrow m => RequestBody -> m LB.ByteString
+bodyLBS (RequestBodyBS b)   = return $ LB.fromStrict b
+bodyLBS (RequestBodyLBS lb) = return lb
+bodyLBS _                   =
+    throwM $ InvalidRequest "Unsupported request body type"
 
 xmlDocCursor :: (MonadIO m, MonadThrow m) => RawResponse m -> m X.Cursor
 xmlDocCursor RawResponse { .. } = X.fromDocument
@@ -124,6 +152,29 @@ xmlUTCTimeP txt = case iso8601ParseM $ T.unpack txt of
 xmlAttrError :: Text -> ClientException
 xmlAttrError txt = InvalidXML $ "Missing " <> txt
 
-xmlMaybeField :: Cursor Node -> Text -> Maybe Text
-xmlMaybeField cursor name =
+xmlMaybeAttr :: Cursor Node -> Text -> Maybe Text
+xmlMaybeAttr cursor name =
     listToMaybe $ cursor $/ X.laxElement name &/ X.content
+
+objectMetadataP :: MonadThrow m => RawResponse m -> m ObjectMetadata
+objectMetadataP raw = do
+    metadata <- runMaybeT
+        $ ObjectMetadata <$> (readLen =<< lookupHeader "Content-Length")
+        <*> lookupHeader "Content-Type"
+        <*> (readEtag =<< lookupHeader "Etag")
+        <*> (readDate =<< lookupHeader "Last-Modified")
+    case metadata of
+        Just md -> return md
+        Nothing -> throwM $ OtherError "Missing/malformed headers"
+  where
+    lookupHeader h = MaybeT . return $ lookup h (raw ^. field @"headers")
+
+    readLen        = MaybeT . return . readMaybe @Int . C.unpack
+
+    readDate       = MaybeT . return . parseAmzTime . C.unpack
+
+    readEtag       =
+        MaybeT . return . fmap unquote . eitherToMaybe . T.decodeUtf8'
+
+    parseAmzTime   =
+        parseTimeM True defaultTimeLocale "%a, %d %b %Y %H:%M:%S %EZ"

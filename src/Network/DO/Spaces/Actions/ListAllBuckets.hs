@@ -52,12 +52,13 @@ instance MonadSpaces m => Action m ListAllBuckets where
     buildRequest _ = do
         spaces <- ask
         return SpacesRequestBuilder
-               { body        = Nothing
-               , method      = Nothing
-               , object      = Nothing
-               , queryString = Nothing
-               , bucket      = Nothing
-               , headers     = mempty
+               { body           = Nothing
+               , method         = Nothing
+               , object         = Nothing
+               , queryString    = Nothing
+               , bucket         = Nothing
+               , headers        = mempty
+               , overrideRegion = Nothing
                , ..
                }
 

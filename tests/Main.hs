@@ -68,10 +68,10 @@ requests = do
         it "Generates the authorization"
             $ mkAuthorization spacesRequest strToSign `shouldBe` auth
   where
-    bodyHash =
+    bodyHash           =
         "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
-    canonRequest = Canonicalized
+    canonRequest       = Canonicalized
         $ C.intercalate "\n"
                         [ "GET"
                         , "/"
@@ -84,7 +84,7 @@ requests = do
                         , bodyHash
                         ]
 
-    strToSign = StringToSign
+    strToSign          = StringToSign
         $ C.intercalate "\n"
                         [ "AWS4-HMAC-SHA256"
                         , "20210404T214315Z"
@@ -92,9 +92,10 @@ requests = do
                         , "266d2fb56a251205c42c7e0deb7d2e370574cf190f366ecf53179c27697c8e38"
                         ]
 
-    sig = Signature "3d0da77e916e588d05f0190f8c350eddb47337953897b1e0cfdb44075fd6b2b9"
+    sig                =
+        Signature "3d0da77e916e588d05f0190f8c350eddb47337953897b1e0cfdb44075fd6b2b9"
 
-    auth = Authorization
+    auth               = Authorization
         $ mconcat [ "AWS4-HMAC-SHA256 Credential="
                   , "II5JDQBAN3JYM4DNEB6C"
                   , "/"
@@ -105,20 +106,20 @@ requests = do
                   , uncompute sig
                   ]
 
-    testTime = read @UTCTime "2021-04-04 21:43:15 +0000"
+    testTime           = read @UTCTime "2021-04-04 21:43:15 +0000"
 
     testBuilder spaces = SpacesRequestBuilder
         { spaces
-        , method      = Nothing
-        , body        = Nothing
-        , headers     = mempty
-        , bucket      = Just testBucket
-        , object      = Nothing
-        , queryString = Nothing
+        , method         = Nothing
+        , body           = Nothing
+        , headers        = mempty
+        , bucket         = Just testBucket
+        , object         = Nothing
+        , queryString    = Nothing
+        , overrideRegion = Nothing
         }
 
-    testBucket :: Bucket
-    testBucket = Bucket "a-bucket"
+    testBucket         = Bucket "a-bucket"
 
 testSpaces :: IO Spaces
 testSpaces =
@@ -138,10 +139,10 @@ errorResponse = do
         . it "parses APIException correctly"
         $ apiEx
         `shouldBe` APIException
-        { status
-        , code      = "SignatureDoesNotMatch"
+        { code      = "SignatureDoesNotMatch"
         , requestID = "tx000012a832c-nyc3"
         , hostID    = "71f0230-nyc3a-nyc"
+        , status
         }
   where
     status = mkStatus 403 ""
@@ -154,7 +155,6 @@ listAllBucketsResponse = do
             let headers = mempty
                 raw     = RawResponse { .. }
             runSpacesT (consumeResponse @_ @ListAllBuckets raw) sp
-            -- consumeResponse @_ @ListAllBuckets raw
     bucketDate1 <- iso8601ParseM @_ @UTCTime "2017-06-23T18:37:48.157Z"
     bucketDate2 <- iso8601ParseM @_ @UTCTime "2017-06-23T18:37:48.157Z"
 
@@ -180,6 +180,7 @@ listBucket = do
             runSpacesT (consumeResponse @_ @ListBucket raw) sp
     objectDate1 <- iso8601ParseM @_ @UTCTime "2017-07-13T18:40:46.777Z"
     objectDate2 <- iso8601ParseM @_ @UTCTime "2017-07-14T17:44:03.597Z"
+
     hspec . describe "ListBucket response" $ do
         it "parses ListBucketResponse correctly"
             $ bucketContents `shouldBe` listBucketResp objectDate1 objectDate2
@@ -237,6 +238,7 @@ bucketLocationResponse = do
             let headers = mempty
                 raw     = RawResponse { .. }
             runSpacesT (consumeResponse @_ @GetBucketLocation raw) sp
+
     hspec
         . describe "GetBucketLocation response"
         . it "parses GetBucketLocationResponse correctly"
@@ -254,6 +256,7 @@ objectInfoResponse = do
                   ]
         raw     = RawResponse { .. }
     objectInfo <- runSpacesT (consumeResponse @_ @GetObjectInfo raw) sp
+
     hspec
         . describe "GetObjectInfo response"
         . it "parses GetObjectInfo response headers correctly"

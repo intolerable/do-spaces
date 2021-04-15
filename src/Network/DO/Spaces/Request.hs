@@ -11,7 +11,7 @@ module Network.DO.Spaces.Request
     , finalize
     ) where
 
-import           Control.Monad.Catch             ( MonadThrow(throwM) )
+import           Control.Monad.Catch             ( MonadThrow )
 
 import           Crypto.Hash                     ( SHA256, hashlazy )
 import           Crypto.MAC.HMAC                 ( hmac )
@@ -39,11 +39,14 @@ import           Data.Time
 import           Lens.Micro                      ( (^.) )
 
 import           Network.DO.Spaces.Types
-import           Network.DO.Spaces.Utils         ( regionSlug, toLowerBS )
-import           Network.HTTP.Client.Conduit
-                 ( Request
-                 , RequestBody(RequestBodyLBS, RequestBodyBS)
+import           Network.DO.Spaces.Utils
+                 ( bodyLBS
+                 , regionSlug
+                 , toLowerBS
                  )
+import           Network.HTTP.Client.Conduit     ( Request
+                                                 , RequestBody(RequestBodyBS)
+                                                 )
 import qualified Network.HTTP.Client.Conduit     as H
 import           Network.HTTP.Types              ( Header )
 import qualified Network.HTTP.Types              as H
@@ -69,7 +72,8 @@ newSpacesRequest SpacesRequestBuilder { .. } time = do
                   , " "
                   , "https://"
                   , maybe mempty ((<> ".") . T.unpack . coerce) bucket
-                  , spaces ^. field @"region" & regionSlug
+                  , regionSlug
+                    $ fromMaybe (spaces ^. field @"region") overrideRegion
                   , "."
                   , "digitaloceanspaces.com/"
                   , maybe mempty (T.unpack . coerce) object
@@ -155,12 +159,6 @@ mkCredentials SpacesRequest { .. } = Credentials
                     , "s3"
                     , "aws4_request"
                     ]
-
-bodyLBS :: MonadThrow m => RequestBody -> m LB.ByteString
-bodyLBS (RequestBodyBS b)   = return $ LB.fromStrict b
-bodyLBS (RequestBodyLBS lb) = return lb
-bodyLBS _                   =
-    throwM $ InvalidRequest "Unsupported request body type"
 
 -- | Required to override @http-client@ automatically setting the Content-Length header and
 -- setting obligatory headers for AWS v4 API requests

@@ -47,7 +47,7 @@ import           Network.DO.Spaces.Utils
                  , xmlAttrError
                  , xmlDocCursor
                  , xmlIntP
-                 , xmlMaybeField
+                 , xmlMaybeAttr
                  )
 import qualified Network.HTTP.Types      as H
 
@@ -96,21 +96,22 @@ instance MonadSpaces m => Action m ListBucket where
         spaces <- ask
 
         return SpacesRequestBuilder
-               { bucket      = Just bucket
-               , body        = Nothing
-               , object      = Nothing
-               , method      = Nothing
-               , headers     = mempty
-               , queryString = Just
-                     $ H.toQuery [ ("delimiter" :: ByteString, ) . C.singleton
-                                   <$> delimiter
-                                 , ("marker", ) . T.encodeUtf8 . unObject
-                                   <$> marker
-                                 , ("max-keys", ) . bshow <$> maxKeys
-                                 , ("prefix", ) . T.encodeUtf8 <$> prefix
-                                 ]
+               { bucket         = Just bucket
+               , body           = Nothing
+               , object         = Nothing
+               , method         = Nothing
+               , headers        = mempty
+               , overrideRegion = Nothing
                , ..
                }
+      where
+        queryString = Just
+            $ H.toQuery [ ("delimiter" :: ByteString, ) . C.singleton
+                          <$> delimiter
+                        , ("marker", ) . T.encodeUtf8 . unObject <$> marker
+                        , ("max-keys", ) . bshow <$> maxKeys
+                        , ("prefix", ) . T.encodeUtf8 <$> prefix
+                        ]
 
     consumeResponse raw = do
         cursor <- xmlDocCursor raw
@@ -121,15 +122,16 @@ instance MonadSpaces m => Action m ListBucket where
         isTruncated <- X.force (xmlAttrError "IsTruncated")
             $ cursor $/ X.laxElement "IsTruncated" &/ X.content &| truncP
         objects <- S.fromList
-            <$> (sequence $ cursor $/ X.laxElement "Contents" &| objectInfoP)
-        let prefix     = xmlMaybeField cursor "Prefix"
-            marker     = coerce <$> xmlMaybeField cursor "Marker"
-            nextMarker = coerce <$> xmlMaybeField cursor "NextMarker"
+            <$> (sequence
+                 $ cursor $/ X.laxElement "Contents" &| objectMetadataP)
+        let prefix     = xmlMaybeAttr cursor "Prefix"
+            marker     = coerce <$> xmlMaybeAttr cursor "Marker"
+            nextMarker = coerce <$> xmlMaybeAttr cursor "NextMarker"
         return ListBucketResponse { .. }
       where
         truncP t = bool False True (t == "true")
 
-        objectInfoP c = do
+        objectMetadataP c = do
             object <- X.force (xmlAttrError "Key")
                 $ c $/ X.laxElement "Key" &/ X.content &| coerce
             lastModified <- lastModifiedP c

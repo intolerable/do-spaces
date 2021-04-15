@@ -128,13 +128,14 @@ data SpacesRequest = SpacesRequest
     deriving ( Generic )
 
 data SpacesRequestBuilder = SpacesRequestBuilder
-    { spaces      :: Spaces
-    , body        :: Maybe RequestBody
-    , method      :: Maybe Method
-    , headers     :: [Header]
-    , bucket      :: Maybe Bucket
-    , object      :: Maybe Object
-    , queryString :: Maybe Query
+    { spaces         :: Spaces
+    , body           :: Maybe RequestBody
+    , method         :: Maybe Method
+    , headers        :: [Header]
+    , bucket         :: Maybe Bucket
+    , object         :: Maybe Object
+    , queryString    :: Maybe Query
+    , overrideRegion :: Maybe Region
     }
     deriving ( Generic )
 

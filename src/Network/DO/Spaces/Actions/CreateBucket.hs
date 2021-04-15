@@ -3,6 +3,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
@@ -15,6 +16,7 @@ module Network.DO.Spaces.Actions.CreateBucket
 import           Control.Monad.Reader    ( MonadReader(ask) )
 
 import qualified Data.CaseInsensitive    as CI
+import           Data.Maybe              ( catMaybes )
 
 import           GHC.Generics            ( Generic )
 
@@ -24,6 +26,7 @@ import           Network.DO.Spaces.Types
                  , CannedACL
                  , Method(PUT)
                  , MonadSpaces
+                 , Region
                  , SpacesRequestBuilder(..)
                  )
 import           Network.DO.Spaces.Utils ( showCannedACL )
@@ -33,6 +36,7 @@ data CreateBucket = CreateBucket
     { bucket :: Bucket -- ^ The name of the new 'Bucket' to create
     , acl    :: Maybe CannedACL
       -- ^ The 'CannedACL' to use; defaults to 'Private'
+    , region :: Maybe Region
     }
     deriving ( Show, Eq, Generic )
 
@@ -44,16 +48,15 @@ instance MonadSpaces m => Action m CreateBucket where
     buildRequest CreateBucket { .. } = do
         spaces <- ask
         return SpacesRequestBuilder
-               { bucket      = Just bucket
-               , method      = Just PUT
-               , headers     =
-                     maybe mempty
-                           (\a -> [ (CI.mk "x-amz-acl", showCannedACL a) ])
-                           acl
-               , body        = Nothing
-               , object      = Nothing
-               , queryString = Nothing
+               { bucket         = Just bucket
+               , method         = Just PUT
+               , overrideRegion = region
+               , body           = Nothing
+               , object         = Nothing
+               , queryString    = Nothing
                , ..
                }
+      where
+        headers = catMaybes [ (CI.mk "x-amz-acl", ) . showCannedACL <$> acl ]
 
     consumeResponse _ = return ()

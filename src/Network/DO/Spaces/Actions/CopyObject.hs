@@ -4,6 +4,8 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
+{-# LANGUAGE TupleSections #-}
+
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
@@ -22,6 +24,7 @@ import qualified Data.ByteString.Char8   as C
 import qualified Data.CaseInsensitive    as CI
 import           Data.Char               ( toUpper )
 import           Data.Coerce             ( coerce )
+import           Data.Maybe              ( catMaybes )
 import qualified Data.Text.Encoding      as T
 import           Data.Time               ( UTCTime )
 
@@ -80,27 +83,27 @@ instance MonadSpaces m => Action m CopyObject where
                       ]
         spaces <- ask
         return SpacesRequestBuilder
-               { object      = Just destObject
-               , bucket      = Just destBucket
-               , method      = Just PUT
-               , body        = Nothing
-               , queryString = Nothing
-               , headers     = [ ( CI.mk "x-amz-copy-source"
-                                 , mconcat [ "/"
-                                           , T.encodeUtf8 $ coerce srcBucket
-                                           , "/"
-                                           , T.encodeUtf8 $ coerce srcObject
-                                           ]
-                                 )
-                               , ( CI.mk "x-amz-metadata-directive"
-                                 , C.map toUpper $ bshow metadataDirective
-                                 )
-                               ]
-                     <> case acl of
-                         Nothing -> []
-                         Just a  -> [ (CI.mk "x-amz-acl", showCannedACL a) ]
+               { object         = Just destObject
+               , bucket         = Just destBucket
+               , method         = Just PUT
+               , body           = Nothing
+               , queryString    = Nothing
+               , overrideRegion = Nothing
                , ..
                }
+      where
+        headers = [ ( CI.mk "x-amz-copy-source"
+                    , mconcat [ "/"
+                              , T.encodeUtf8 $ coerce srcBucket
+                              , "/"
+                              , T.encodeUtf8 $ coerce srcObject
+                              ]
+                    )
+                  , ( CI.mk "x-amz-metadata-directive"
+                    , C.map toUpper $ bshow metadataDirective
+                    )
+                  ]
+            <> catMaybes [ (CI.mk "x-amz-acl", ) . showCannedACL <$> acl ]
 
     consumeResponse raw = do
         cursor <- xmlDocCursor raw

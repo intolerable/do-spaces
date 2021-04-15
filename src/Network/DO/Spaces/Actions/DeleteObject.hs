@@ -38,12 +38,13 @@ instance MonadSpaces m => Action m DeleteObject where
     buildRequest DeleteObject { .. } = do
         spaces <- ask
         return SpacesRequestBuilder
-               { bucket      = Just bucket
-               , object      = Just object
-               , method      = Just DELETE
-               , body        = Nothing
-               , queryString = Nothing
-               , headers     = mempty
+               { bucket         = Just bucket
+               , object         = Just object
+               , method         = Just DELETE
+               , body           = Nothing
+               , queryString    = Nothing
+               , headers        = mempty
+               , overrideRegion = Nothing
                , ..
                }
 
