@@ -25,7 +25,7 @@ import           GHC.Generics            ( Generic )
 import           Network.DO.Spaces.Types
                  ( Action(..)
                  , Bucket
-                 , ClientException(OtherError)
+                 , ClientException(InvalidXML)
                  , MonadSpaces
                  , Region(..)
                  , SpacesRequestBuilder(..)
@@ -82,5 +82,5 @@ instance MonadSpaces m => Action m GetBucketLocation where
             "sfo3" -> return SanFrancisco
             "sgp1" -> return Singapore
             "fra1" -> return Frankfurt
-            reg    -> throwM . OtherError
+            reg    -> throwM . InvalidXML
                 $ "GetBucketLocation: unrecognized region " <> quote reg

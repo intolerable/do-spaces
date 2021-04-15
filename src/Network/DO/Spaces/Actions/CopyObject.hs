@@ -34,7 +34,7 @@ import           Network.DO.Spaces.Types
                  ( Action(..)
                  , Bucket(Bucket)
                  , CannedACL
-                 , ClientException(OtherError)
+                 , ClientException(InvalidRequest)
                  , ETag
                  , Method(PUT)
                  , MonadSpaces
@@ -76,7 +76,7 @@ instance MonadSpaces m => Action m CopyObject where
     buildRequest CopyObject { .. } = do
         when (and [ srcObject == destObject, metadataDirective == Copy ])
             . throwM
-            . OtherError
+            . InvalidRequest
             $ mconcat [ "CopyObject: "
                       , "Object cannot be copied to itself unless "
                       , "REPLACE directive is specified"

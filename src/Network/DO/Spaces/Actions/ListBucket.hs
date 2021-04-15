@@ -33,7 +33,7 @@ import           GHC.Generics            ( Generic )
 import           Network.DO.Spaces.Types
                  ( Action(..)
                  , Bucket(Bucket)
-                 , ClientException(OtherError)
+                 , ClientException(InvalidRequest)
                  , MonadSpaces
                  , Object(..)
                  , ObjectInfo(..)
@@ -92,7 +92,7 @@ instance MonadSpaces m => Action m ListBucket where
     buildRequest ListBucket { .. } = do
         when (Just True == orM [ (< 0) <$> maxKeys, (> 1000) <$> maxKeys ])
             . throwM
-            $ OtherError "ListBucket: maxKeys must be >= 0 && <= 1000"
+            $ InvalidRequest "ListBucket: maxKeys must be >= 0 && <= 1000"
         spaces <- ask
 
         return SpacesRequestBuilder

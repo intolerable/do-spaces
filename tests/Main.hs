@@ -189,9 +189,9 @@ listBucket = do
             let badReq  = listBucketReq $ Just (-1)
                 badReq2 = listBucketReq $ Just 1001
             runSpacesT (buildRequest badReq) sp
-                `shouldThrow` (OtherError msg ==)
+                `shouldThrow` (InvalidRequest msg ==)
             runSpacesT (buildRequest badReq2) sp
-                `shouldThrow` (OtherError msg ==)
+                `shouldThrow` (InvalidRequest msg ==)
   where
     listBucketReq maxKeys = ListBucket
         { bucket    = Bucket "some-bucket"
@@ -290,7 +290,7 @@ copyObject = do
 
         it "ensures the correct metadataDirective is provided"
             $ runSpacesT (buildRequest badReq) sp
-            `shouldThrow` (OtherError msg ==)
+            `shouldThrow` (InvalidRequest msg ==)
   where
     badReq    = CopyObject
         { srcBucket
