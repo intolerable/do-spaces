@@ -55,6 +55,11 @@ module Network.DO.Spaces.Types
     , SpacesException(..)
     , APIException(..)
     , ETag
+    , CacheControl
+    , ContentDisposition
+    , ContentEncoding
+    , UserMetadata
+    , UploadHeaders(..)
     ) where
 
 import           Conduit                     ( ConduitT, MonadUnliftIO )
@@ -214,6 +219,30 @@ type DisplayName = OwnerID
 
 -- | MD5 hash of an 'Object'
 type ETag = Text
+
+-- | Optional headers when uploading objects
+data UploadHeaders = UploadHeaders
+    { acl                :: Maybe CannedACL
+    , cacheControl       :: Maybe CacheControl
+    , contentDisposition :: Maybe ContentDisposition
+    , contentEncoding    :: Maybe ContentEncoding
+    , metadata           :: UserMetadata
+    }
+    deriving ( Show, Eq, Generic )
+
+-- | @Cache-Control@ request header value
+type CacheControl = Text
+
+-- | @Content-Disposition@ request header value
+type ContentDisposition = Text
+
+-- | @Content-Encoding@ request header value
+type ContentEncoding = Text
+
+-- | Arbitrary key-value pairs supplied by the user, for use in @PUT@ or @POST@
+-- requests. Each pair expands into @x-amz-meta-*@, e.g.
+-- @x-amz-meta-s3cmd-attrs: uid:1000/gname:asb...@
+type UserMetadata = [(Text, Text)]
 
 -- | Represents some resource that has been canonicalized according to the
 -- Spaces/AWS v4 spec

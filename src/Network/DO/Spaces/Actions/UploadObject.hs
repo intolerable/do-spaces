@@ -19,50 +19,39 @@ import           Control.Monad.Catch       ( MonadThrow(throwM) )
 import           Control.Monad.Reader      ( MonadReader(ask) )
 import           Control.Monad.Trans.Maybe ( MaybeT(runMaybeT) )
 
-import           Data.Bifunctor            ( Bifunctor(second, first) )
-import qualified Data.CaseInsensitive      as CI
-import           Data.Maybe                ( catMaybes )
-import           Data.Text                 ( Text )
-import qualified Data.Text.Encoding        as T
-
 import           GHC.Generics              ( Generic )
 
 import           Network.DO.Spaces.Types
                  ( Action(..)
                  , Bucket
-                 , CannedACL
                  , ClientException(OtherError)
+                 , ETag
                  , Method(PUT)
                  , MonadSpaces
                  , Object
                  , SpacesRequestBuilder(..)
+                 , UploadHeaders(..)
                  )
 import           Network.DO.Spaces.Utils
                  ( lookupHeader
                  , readContentLen
                  , readEtag
-                 , showCannedACL
+                 , renderUploadHeaders
                  )
 import           Network.HTTP.Conduit      ( RequestBody )
 
 -- | Upload a single object to Spaces. The maximum size for a single PUT request
 -- is 5 GB
 data UploadObject = UploadObject
-    { object             :: Object
-    , bucket             :: Bucket
-    , body               :: RequestBody
-    , acl                :: Maybe CannedACL
-    , cacheControl       :: Maybe Text
-    , contentDisposition :: Maybe Text
-    , contentEncoding    :: Maybe Text
-    , metadata           :: [(Text, Text)]
-      -- ^ Arbitrary key-value pairs supplied by the user. Each pair expands into
-      -- @x-amz-meta-*@, e.g. @x-amz-meta-s3cmd-attrs: uid:1000/gname:asb...@
+    { object          :: Object
+    , bucket          :: Bucket
+    , body            :: RequestBody
+    , optionalHeaders :: UploadHeaders
     }
     deriving ( Generic )
 
 data UploadObjectResponse = UploadObjectResponse
-    { etag          :: Text -- ^ MD5 hash of the object
+    { etag          :: ETag
     , contentLength :: Int -- ^ Length in bytes
     }
     deriving ( Show, Eq, Generic )
@@ -79,16 +68,9 @@ instance MonadSpaces m => Action m UploadObject where
                , body           = Just body
                , queryString    = Nothing
                , overrideRegion = Nothing
+               , headers        = renderUploadHeaders optionalHeaders
                , ..
                }
-      where
-        headers = second T.encodeUtf8
-            <$> catMaybes [ ("x-amz-acl", ) . showCannedACL <$> acl
-                          , ("Cache-Control", ) <$> cacheControl
-                          , ("Content-Disposition", ) <$> contentDisposition
-                          , ("Content-Encoding", ) <$> contentEncoding
-                          ]
-            <> (first (CI.mk . T.encodeUtf8 . ("x-amz-meta-" <>)) <$> metadata)
 
     consumeResponse raw = do
         resp <- runMaybeT

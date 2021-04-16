@@ -2,6 +2,8 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TupleSections #-}
+
 {-# LANGUAGE TypeApplications #-}
 
 -- |
@@ -28,6 +30,7 @@ module Network.DO.Spaces.Utils
     , lookupHeader
     , readEtag
     , readContentLen
+    , renderUploadHeaders
     ) where
 
 import           Conduit                   ( (.|), runConduit )
@@ -40,12 +43,14 @@ import           Control.Monad.Catch
 import           Control.Monad.IO.Class    ( MonadIO )
 import           Control.Monad.Trans.Maybe ( MaybeT(MaybeT, runMaybeT) )
 
+import           Data.Bifunctor            ( Bifunctor(first, second) )
 import           Data.ByteString           ( ByteString )
 import qualified Data.ByteString.Char8     as C
 import qualified Data.ByteString.Lazy      as LB
+import qualified Data.CaseInsensitive      as CI
 import           Data.Char                 ( toLower )
 import           Data.Generics.Product     ( HasField(field) )
-import           Data.Maybe                ( listToMaybe )
+import           Data.Maybe                ( catMaybes, listToMaybe )
 import           Data.String               ( IsString )
 import           Data.Text                 ( Text )
 import qualified Data.Text                 as T
@@ -63,7 +68,7 @@ import           Network.DO.Spaces.Types
 import           Network.HTTP.Conduit
                  ( RequestBody(RequestBodyBS, RequestBodyLBS)
                  )
-import           Network.HTTP.Types        ( HeaderName )
+import           Network.HTTP.Types        ( Header, HeaderName )
 
 import           Text.Read                 ( readMaybe )
 import           Text.XML                  ( Node )
@@ -118,6 +123,16 @@ bodyLBS (RequestBodyBS b)   = return $ LB.fromStrict b
 bodyLBS (RequestBodyLBS lb) = return lb
 bodyLBS _                   =
     throwM $ InvalidRequest "Unsupported request body type"
+
+-- | Convert 'UploadHeaders' to a list of request 'Header's
+renderUploadHeaders :: UploadHeaders -> [Header]
+renderUploadHeaders UploadHeaders { .. } = second T.encodeUtf8
+    <$> catMaybes [ ("x-amz-acl", ) . showCannedACL <$> acl
+                  , ("Cache-Control", ) <$> cacheControl
+                  , ("Content-Disposition", ) <$> contentDisposition
+                  , ("Content-Encoding", ) <$> contentEncoding
+                  ]
+    <> (first (CI.mk . T.encodeUtf8 . ("x-amz-meta-" <>)) <$> metadata)
 
 xmlDocCursor :: (MonadIO m, MonadThrow m) => RawResponse m -> m X.Cursor
 xmlDocCursor RawResponse { .. } = X.fromDocument
