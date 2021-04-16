@@ -62,6 +62,7 @@ library
     Network.DO.Spaces.Actions.DeleteBucket
     Network.DO.Spaces.Actions.DeleteObject
     Network.DO.Spaces.Actions.GetBucketLocation
+    Network.DO.Spaces.Actions.GetObject
     Network.DO.Spaces.Actions.GetObjectInfo
     Network.DO.Spaces.Actions.ListAllBuckets
     Network.DO.Spaces.Actions.ListBucket

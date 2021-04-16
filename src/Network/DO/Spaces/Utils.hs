@@ -24,7 +24,7 @@ module Network.DO.Spaces.Utils
     , quote
     , etagP
     , lastModifiedP
-    , objectMetadataP
+    , getObjectMetadata
     , bodyLBS
     , tshow
     , lookupHeader
@@ -175,8 +175,8 @@ xmlMaybeAttr :: Cursor Node -> Text -> Maybe Text
 xmlMaybeAttr cursor name =
     listToMaybe $ cursor $/ X.laxElement name &/ X.content
 
-objectMetadataP :: MonadThrow m => RawResponse m -> m ObjectMetadata
-objectMetadataP raw = do
+getObjectMetadata :: MonadThrow m => RawResponse m -> m ObjectMetadata
+getObjectMetadata raw = do
     metadata <- runMaybeT
         $ ObjectMetadata
         <$> (readContentLen =<< lookupHeader' "Content-Length")
