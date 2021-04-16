@@ -25,6 +25,9 @@ module Network.DO.Spaces.Utils
     , objectMetadataP
     , bodyLBS
     , tshow
+    , lookupHeader
+    , readEtag
+    , readContentLen
     ) where
 
 import           Conduit                   ( (.|), runConduit )
@@ -60,6 +63,7 @@ import           Network.DO.Spaces.Types
 import           Network.HTTP.Conduit
                  ( RequestBody(RequestBodyBS, RequestBodyLBS)
                  )
+import           Network.HTTP.Types        ( HeaderName )
 
 import           Text.Read                 ( readMaybe )
 import           Text.XML                  ( Node )
@@ -159,24 +163,30 @@ xmlMaybeAttr cursor name =
 objectMetadataP :: MonadThrow m => RawResponse m -> m ObjectMetadata
 objectMetadataP raw = do
     metadata <- runMaybeT
-        $ ObjectMetadata <$> (readLen =<< lookupHeaderM "Content-Length")
-        <*> (return $ lookupHeader "Content-Type")
-        <*> (readEtag =<< lookupHeaderM "Etag")
-        <*> (readDate =<< lookupHeaderM "Last-Modified")
+        $ ObjectMetadata
+        <$> (readContentLen =<< lookupHeader' "Content-Length")
+        <*> lookupHeader' "Content-Type"
+        <*> (readEtag =<< lookupHeader' "Etag")
+        <*> (readDate =<< lookupHeader' "Last-Modified")
     case metadata of
         Just md -> return md
         Nothing -> throwM $ OtherError "Missing/malformed headers"
   where
-    lookupHeader h = lookup h (raw ^. field @"headers")
+    lookupHeader' = lookupHeader raw
 
-    lookupHeaderM  = MaybeT . return . lookupHeader
+    readDate      = MaybeT . return . parseAmzTime . C.unpack
 
-    readLen        = MaybeT . return . readMaybe @Int . C.unpack
-
-    readDate       = MaybeT . return . parseAmzTime . C.unpack
-
-    readEtag       =
-        MaybeT . return . fmap unquote . eitherToMaybe . T.decodeUtf8'
-
-    parseAmzTime   =
+    parseAmzTime  =
         parseTimeM True defaultTimeLocale "%a, %d %b %Y %H:%M:%S %EZ"
+
+-- | Lookup the value of a 'HeaderName' from a 'RawResponse' in a monadic context
+lookupHeader :: Monad m => RawResponse m -> HeaderName -> MaybeT m ByteString
+lookupHeader raw = MaybeT . return . flip lookup (raw ^. field @"headers")
+
+-- | Transform a 'Header' value into an 'ETag'
+readEtag :: Monad m => ByteString -> MaybeT m Text
+readEtag = MaybeT . return . fmap unquote . eitherToMaybe . T.decodeUtf8'
+
+-- | Transform a 'Header' value into an 'Int' (for @Content-Length@)
+readContentLen :: Monad m => ByteString -> MaybeT m Int
+readContentLen = MaybeT . return . readMaybe @Int . C.unpack

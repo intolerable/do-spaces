@@ -194,7 +194,7 @@ data ObjectInfo = ObjectInfo
 -- | Metadata returned when querying information about an 'Object'
 data ObjectMetadata = ObjectMetadata
     { contentLength :: Int -- ^ length in bytes
-    , contentType   :: Maybe MimeType
+    , contentType   :: MimeType
     , etag          :: ETag
     , lastModified  :: UTCTime
     }

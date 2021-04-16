@@ -263,7 +263,7 @@ objectInfoResponse = do
         $ objectInfo
         `shouldBe` ObjectMetadata
         { contentLength = 14
-        , contentType   = Just "text/plain"
+        , contentType   = "text/plain"
         , etag          = "b3a92f49e7ae64acbf6b3e76f2040f5e"
         , lastModified  = testTime
         }
