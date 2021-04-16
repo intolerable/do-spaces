@@ -38,6 +38,7 @@ import           Network.DO.Spaces.Actions.GetBucketLocation as M
 import           Network.DO.Spaces.Actions.GetObjectInfo     as M
 import           Network.DO.Spaces.Actions.ListAllBuckets    as M
 import           Network.DO.Spaces.Actions.ListBucket        as M
+import           Network.DO.Spaces.Actions.UploadObject      as M
 import           Network.DO.Spaces.Request
                  ( finalize
                  , mkAuthorization
@@ -74,6 +75,7 @@ runAction action = do
     let stringToSign = mkStringToSign req
         auth         = mkAuthorization req stringToSign
         finalized    = finalize req auth
+
     withResponse @_ @m finalized $ \resp -> do
         let status  = resp & H.responseStatus
             body    = resp & H.responseBody

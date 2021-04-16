@@ -248,7 +248,7 @@ bucketLocationResponse = do
 objectInfoResponse :: IO ()
 objectInfoResponse = do
     sp <- testSpaces
-    let body    = sourceLazy ""
+    let body    = sourceLazy mempty
         headers = [ (CI.mk "Content-Type", "text/plain")
                   , (CI.mk "Content-Length", "14")
                   , (CI.mk "Etag", "b3a92f49e7ae64acbf6b3e76f2040f5e")
@@ -263,7 +263,7 @@ objectInfoResponse = do
         $ objectInfo
         `shouldBe` ObjectMetadata
         { contentLength = 14
-        , contentType   = "text/plain"
+        , contentType   = Just "text/plain"
         , etag          = "b3a92f49e7ae64acbf6b3e76f2040f5e"
         , lastModified  = testTime
         }

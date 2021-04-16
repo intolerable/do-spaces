@@ -159,15 +159,17 @@ xmlMaybeAttr cursor name =
 objectMetadataP :: MonadThrow m => RawResponse m -> m ObjectMetadata
 objectMetadataP raw = do
     metadata <- runMaybeT
-        $ ObjectMetadata <$> (readLen =<< lookupHeader "Content-Length")
-        <*> lookupHeader "Content-Type"
-        <*> (readEtag =<< lookupHeader "Etag")
-        <*> (readDate =<< lookupHeader "Last-Modified")
+        $ ObjectMetadata <$> (readLen =<< lookupHeaderM "Content-Length")
+        <*> (return $ lookupHeader "Content-Type")
+        <*> (readEtag =<< lookupHeaderM "Etag")
+        <*> (readDate =<< lookupHeaderM "Last-Modified")
     case metadata of
         Just md -> return md
         Nothing -> throwM $ OtherError "Missing/malformed headers"
   where
-    lookupHeader h = MaybeT . return $ lookup h (raw ^. field @"headers")
+    lookupHeader h = lookup h (raw ^. field @"headers")
+
+    lookupHeaderM  = MaybeT . return . lookupHeader
 
     readLen        = MaybeT . return . readMaybe @Int . C.unpack
 

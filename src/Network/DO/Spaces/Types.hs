@@ -136,6 +136,9 @@ data SpacesRequestBuilder = SpacesRequestBuilder
     , object         :: Maybe Object
     , queryString    :: Maybe Query
     , overrideRegion :: Maybe Region
+      -- ^ Certain operations, currently only 'Network.DO.Spaces.CreateBucket',
+      -- should be able to override the region configured in the 'Spaces'
+      -- client
     }
     deriving ( Generic )
 
@@ -191,7 +194,7 @@ data ObjectInfo = ObjectInfo
 -- | Metadata returned when querying information about an 'Object'
 data ObjectMetadata = ObjectMetadata
     { contentLength :: Int -- ^ length in bytes
-    , contentType   :: MimeType
+    , contentType   :: Maybe MimeType
     , etag          :: ETag
     , lastModified  :: UTCTime
     }
