@@ -48,7 +48,7 @@ import           Network.HTTP.Client.Conduit     ( Request
                                                  , RequestBody(RequestBodyBS)
                                                  )
 import qualified Network.HTTP.Client.Conduit     as H
-import           Network.HTTP.Types              ( Header )
+import           Network.HTTP.Types              ( Header, Query, QueryItem )
 import qualified Network.HTTP.Types              as H
 
 -- | Extract the 'Request' from a 'SpacesRequest' and set the requisite
@@ -85,7 +85,8 @@ newSpacesRequest SpacesRequestBuilder { .. } time = do
             { H.requestHeaders = headers <> newHeaders
             , H.queryString    = maybe mempty (H.renderQuery True) queryString
             }
-        canonicalRequest = mkCanonicalized request payloadHash
+        canonicalRequest =
+            mkCanonicalized (fromMaybe mempty queryString) request payloadHash
     return
         $ SpacesRequest
         { method = reqMethod, headers = headers <> newHeaders, .. }
@@ -93,14 +94,15 @@ newSpacesRequest SpacesRequestBuilder { .. } time = do
     reqMethod = fromMaybe GET method
 
 -- | Canonicalize a 'Request'
-mkCanonicalized :: Request
+mkCanonicalized :: Query
+                -> Request
                 -> Hashed  -- ^ The hashed 'RequestBody'
                 -> Canonicalized Request
-mkCanonicalized request payloadHash = Canonicalized
+mkCanonicalized query request payloadHash = Canonicalized
     $ C.intercalate "\n"
                     [ request & H.method
                     , request & H.path
-                    , request & H.queryString & C.dropWhile ('?' ==)
+                    , renderQueryString query
                     , request
                       & H.requestHeaders
                       & canonicalizeHeaders
@@ -108,6 +110,16 @@ mkCanonicalized request payloadHash = Canonicalized
                     , request & H.requestHeaders & joinHeaderNames
                     , uncompute payloadHash
                     ]
+
+-- | This is required to encode the query string correctly in the canonical
+-- request. Empty query keys require a trailing @=@, which are not included
+-- with 'H.renderQuery'
+renderQueryString :: Query -> ByteString
+renderQueryString = C.intercalate "&" . fmap renderQueryItem
+  where
+    renderQueryItem :: QueryItem -> ByteString
+    renderQueryItem (k, Nothing) = k <> "="
+    renderQueryItem (k, Just v)  = k <> "=" <> v
 
 -- | Generate a 'StringToSign'
 mkStringToSign :: SpacesRequest -> StringToSign
