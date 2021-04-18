@@ -19,7 +19,6 @@ import           Control.Monad.Catch     ( MonadThrow(throwM) )
 import           Control.Monad.Extra     ( orM )
 import           Control.Monad.Reader    ( MonadReader(ask) )
 
-import           Data.Bool               ( bool )
 import           Data.ByteString         ( ByteString )
 import qualified Data.ByteString.Char8   as C
 import           Data.Coerce             ( coerce )
@@ -42,12 +41,14 @@ import           Network.DO.Spaces.Types
 import           Network.DO.Spaces.Utils
                  ( bshow
                  , etagP
+                 , isTruncP
                  , lastModifiedP
                  , ownerP
-                 , xmlAttrError
+                 , xmlElemError
                  , xmlDocCursor
-                 , xmlIntP
-                 , xmlMaybeAttr
+                 , xmlInt
+                 , xmlMaybeElem
+                 , xmlNum
                  )
 import qualified Network.HTTP.Types      as H
 
@@ -115,29 +116,24 @@ instance MonadSpaces m => Action m ListBucket where
 
     consumeResponse raw = do
         cursor <- xmlDocCursor raw
-        bucket <- X.force (xmlAttrError "Name")
+        bucket <- X.force (xmlElemError "Name")
             $ cursor $/ X.laxElement "Name" &/ X.content &| coerce
-        maxKeys <- X.forceM (xmlAttrError "MaxKeys")
-            $ cursor $/ X.laxElement "MaxKeys" &/ X.content &| xmlIntP
-        isTruncated <- X.force (xmlAttrError "IsTruncated")
-            $ cursor $/ X.laxElement "IsTruncated" &/ X.content &| truncP
+        maxKeys <- xmlNum "MaxKeys" cursor
+        isTruncated <- isTruncP cursor
         objects <- S.fromList
-            <$> (sequence
-                 $ cursor $/ X.laxElement "Contents" &| objectMetadataP)
-        let prefix     = xmlMaybeAttr cursor "Prefix"
-            marker     = coerce <$> xmlMaybeAttr cursor "Marker"
-            nextMarker = coerce <$> xmlMaybeAttr cursor "NextMarker"
+            <$> sequence (cursor $/ X.laxElement "Contents" &| objectInfoP)
+        let prefix     = xmlMaybeElem cursor "Prefix"
+            marker     = coerce <$> xmlMaybeElem cursor "Marker"
+            nextMarker = coerce <$> xmlMaybeElem cursor "NextMarker"
         return ListBucketResponse { .. }
       where
-        truncP t = bool False True (t == "true")
-
-        objectMetadataP c = do
-            object <- X.force (xmlAttrError "Key")
+        objectInfoP c = do
+            object <- X.force (xmlElemError "Key")
                 $ c $/ X.laxElement "Key" &/ X.content &| coerce
             lastModified <- lastModifiedP c
             etag <- etagP c
-            size <- X.forceM (xmlAttrError "Size")
-                $ c $/ X.laxElement "Size" &/ X.content &| xmlIntP
-            owner <- X.forceM (xmlAttrError "Owner")
+            size <- X.forceM (xmlElemError "Size")
+                $ c $/ X.laxElement "Size" &/ X.content &| xmlInt
+            owner <- X.forceM (xmlElemError "Owner")
                 $ c $/ X.laxElement "Owner" &| ownerP
             return ObjectInfo { .. }

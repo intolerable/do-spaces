@@ -16,7 +16,9 @@ import           Data.Time.Format.ISO8601  ( iso8601ParseM )
 
 import           Network.DO.Spaces         ( newSpaces )
 import           Network.DO.Spaces.Actions
-                 ( CopyObject(..)
+                 ( BeginMultipart
+                 , BeginMultipartResponse(..)
+                 , CopyObject(..)
                  , CopyObjectResponse(..)
                  , GetBucketLocation
                  , GetBucketLocationResponse(..)
@@ -25,7 +27,11 @@ import           Network.DO.Spaces.Actions
                  , ListAllBucketsResponse(..)
                  , ListBucket(..)
                  , ListBucketResponse(..)
+                 , ListParts
+                 , ListPartsResponse(..)
                  , MetadataDirective(Copy)
+                 , MultipartSession(..)
+                 , Part(..)
                  , parseErrorResponse
                  )
 import           Network.DO.Spaces.Request
@@ -48,6 +54,8 @@ main = sequence_ [ requests
                  , bucketLocationResponse
                  , objectInfoResponse
                  , copyObject
+                 , beginMultipartResponse
+                 , listPartsResponse
                  ]
 
 requests :: IO ()
@@ -155,8 +163,8 @@ listAllBucketsResponse = do
             let headers = mempty
                 raw     = RawResponse { .. }
             runSpacesT (consumeResponse @_ @ListAllBuckets raw) sp
-    bucketDate1 <- iso8601ParseM @_ @UTCTime "2017-06-23T18:37:48.157Z"
-    bucketDate2 <- iso8601ParseM @_ @UTCTime "2017-06-23T18:37:48.157Z"
+    d1 <- iso8601ParseM @_ @UTCTime "2017-06-23T18:37:48.157Z"
+    d2 <- iso8601ParseM @_ @UTCTime "2017-06-23T18:37:48.157Z"
 
     hspec
         . describe "ListAllBuckets response"
@@ -164,10 +172,9 @@ listAllBucketsResponse = do
         $ allBuckets
         `shouldBe` ListAllBucketsResponse
         { owner   = Owner (OwnerID 6174283) (OwnerID 6174283)
-        , buckets =
-              S.fromList [ BucketInfo (Bucket "static-images") bucketDate1
-                         , BucketInfo (Bucket "log-files") bucketDate2
-                         ]
+        , buckets = S.fromList [ BucketInfo (Bucket "static-images") d1
+                               , BucketInfo (Bucket "log-files") d2
+                               ]
         }
 
 listBucket :: IO ()
@@ -178,12 +185,12 @@ listBucket = do
             let headers = mempty
                 raw     = RawResponse { .. }
             runSpacesT (consumeResponse @_ @ListBucket raw) sp
-    objectDate1 <- iso8601ParseM @_ @UTCTime "2017-07-13T18:40:46.777Z"
-    objectDate2 <- iso8601ParseM @_ @UTCTime "2017-07-14T17:44:03.597Z"
+    d1 <- iso8601ParseM @_ @UTCTime "2017-07-13T18:40:46.777Z"
+    d2 <- iso8601ParseM @_ @UTCTime "2017-07-14T17:44:03.597Z"
 
     hspec . describe "ListBucket response" $ do
         it "parses ListBucketResponse correctly"
-            $ bucketContents `shouldBe` listBucketResp objectDate1 objectDate2
+            $ bucketContents `shouldBe` listBucketResp d1 d2
 
         it "ensures maxKeys is within the correct range" $ do
             let badReq  = listBucketReq $ Just (-1)
@@ -309,3 +316,64 @@ copyObject = do
                         , "Object cannot be copied to itself unless "
                         , "REPLACE directive is specified"
                         ]
+
+beginMultipartResponse :: IO ()
+beginMultipartResponse = do
+    sp <- testSpaces
+    multipart
+        <- withSourceFile "./tests/data/begin-multipart.xml" $ \body -> do
+            let headers = mempty
+                raw     = RawResponse { .. }
+            runSpacesT (consumeResponse @_ @BeginMultipart raw) sp
+
+    hspec
+        . describe "BeginMultipart response"
+        . it "parses BeginMultipartResponse correctly"
+        $ multipart
+        `shouldBe` BeginMultipartResponse
+        { session = MultipartSession
+              { bucket   = Bucket "static-images"
+              , object   = Object "multipart-file.tar.gz"
+              , uploadID = "2~iCw_lDY8VoBhoRrIJbPMrUqnE3Z-3Qh"
+              }
+        }
+
+listPartsResponse :: IO ()
+listPartsResponse = do
+    sp <- testSpaces
+    d <- iso8601ParseM @_ @UTCTime "2017-08-14T18:45:01.601Z"
+    listParts <- withSourceFile "./tests/data/list-parts.xml" $ \body -> do
+        let headers = mempty
+            raw     = RawResponse { .. }
+        runSpacesT (consumeResponse @_ @ListParts raw) sp
+
+    hspec
+        . describe "ListParts response"
+        . it "parses ListPartsResponse correctly"
+        $ listParts `shouldBe` listPartsResp d
+  where
+    listPartsResp lastModified = ListPartsResponse
+        { bucket         = Bucket "my-new-bucket"
+        , object         = Object "multipart-file.tar.gz"
+        , uploadID       = "2~iCw_lDY8VoBhoRrIJbPMrUqnE3Z-3Qh"
+        , partMarker     = 0
+        , nextPartMarker = 1
+        , maxParts       = 1000
+        , isTruncated    = False
+        , owner          =
+              Owner { id' = OwnerID 612423, displayName = OwnerID 612423 }
+        , parts          =
+              S.fromList [ Part
+                           { partNumber   = 1
+                           , etag         = "d8d3ed3a4de016917a814a2cf5acad3c"
+                           , size         = 5242880
+                           , lastModified
+                           }
+                         , Part
+                           { partNumber   = 2
+                           , etag         = "adf5feafc0fe4632008d5cb30beb1c49"
+                           , size         = 5242880
+                           , lastModified
+                           }
+                         ]
+        }

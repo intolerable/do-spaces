@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListPartsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+  <Bucket>my-new-bucket</Bucket>
+  <Key>multipart-file.tar.gz</Key>
+  <UploadId>2~iCw_lDY8VoBhoRrIJbPMrUqnE3Z-3Qh</UploadId>
+  <StorageClass>STANDARD</StorageClass>
+  <PartNumberMarker>0</PartNumberMarker>
+  <NextPartNumberMarker>1</NextPartNumberMarker>
+  <MaxParts>1000</MaxParts>
+  <IsTruncated>false</IsTruncated>
+  <Owner>
+    <ID>612423</ID>
+    <DisplayName>612423</DisplayName>
+  </Owner>
+  <Part>
+    <LastModified>2017-08-14T18:45:01.601Z</LastModified>
+    <PartNumber>1</PartNumber>
+    <ETag>"d8d3ed3a4de016917a814a2cf5acad3c"</ETag>
+    <Size>5242880</Size>
+  </Part>
+  <Part>
+    <LastModified>2017-08-14T18:45:01.601Z</LastModified>
+    <PartNumber>2</PartNumber>
+    <ETag>"adf5feafc0fe4632008d5cb30beb1c49"</ETag>
+    <Size>5242880</Size>
+  </Part>
+</ListPartsResult>

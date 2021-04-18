@@ -10,13 +10,13 @@
 module Network.DO.Spaces.Utils
     ( regionSlug
     , toLowerBS
-    , xmlIntP
-    , xmlAttrError
-    , xmlUTCTimeP
+    , xmlInt
+    , xmlElemError
+    , xmlUTCTime
     , bshow
     , ownerP
     , xmlDocCursor
-    , xmlMaybeAttr
+    , xmlMaybeElem
     , showCannedACL
     , handleMaybe
     , unquote
@@ -31,6 +31,10 @@ module Network.DO.Spaces.Utils
     , readEtag
     , readContentLen
     , renderUploadHeaders
+    , isTruncP
+    , xmlNum
+    , bucketP
+    , objectP
     ) where
 
 import           Conduit                   ( (.|), runConduit )
@@ -44,11 +48,13 @@ import           Control.Monad.IO.Class    ( MonadIO )
 import           Control.Monad.Trans.Maybe ( MaybeT(MaybeT, runMaybeT) )
 
 import           Data.Bifunctor            ( Bifunctor(first, second) )
+import           Data.Bool                 ( bool )
 import           Data.ByteString           ( ByteString )
 import qualified Data.ByteString.Char8     as C
 import qualified Data.ByteString.Lazy      as LB
 import qualified Data.CaseInsensitive      as CI
 import           Data.Char                 ( toLower )
+import           Data.Coerce               ( coerce )
 import           Data.Generics.Product     ( HasField(field) )
 import           Data.Maybe                ( catMaybes, listToMaybe )
 import           Data.String               ( IsString )
@@ -141,38 +147,59 @@ xmlDocCursor RawResponse { .. } = X.fromDocument
 -- | XML parser for 'Owner' attribute
 ownerP :: MonadThrow m => Cursor Node -> m Owner
 ownerP c = do
-    id' <- X.forceM (xmlAttrError "ID")
-        $ c $/ X.laxElement "ID" &/ X.content &| xmlIntP @_ @OwnerID
+    id' <- X.forceM (xmlElemError "ID")
+        $ c $/ X.laxElement "ID" &/ X.content &| xmlInt @_ @OwnerID
     return Owner { displayName = id', id' }
 
 -- | XML parser for 'ETag' attribute
 etagP :: MonadThrow m => Cursor Node -> m ETag
-etagP c = X.force (xmlAttrError "ETag")
+etagP c = X.force (xmlElemError "ETag")
     $ c $/ X.laxElement "ETag" &/ X.content &| unquote
 
 -- | XML parser for @LastModified@ attribute
 lastModifiedP :: MonadThrow m => Cursor Node -> m UTCTime
-lastModifiedP c = X.forceM (xmlAttrError "LastModified")
-    $ c $/ X.laxElement "LastModified" &/ X.content &| xmlUTCTimeP
+lastModifiedP c = X.forceM (xmlElemError "LastModified")
+    $ c $/ X.laxElement "LastModified" &/ X.content &| xmlUTCTime
 
--- | Parse some 'Num' type from 'Text'
-xmlIntP :: (MonadThrow m, Num a) => Text -> m a
-xmlIntP txt = case readMaybe $ T.unpack txt of
+-- | Read a 'Num' type from 'Text'
+xmlInt :: (MonadThrow m, Num a) => Text -> m a
+xmlInt txt = case readMaybe $ T.unpack txt of
     Just n  -> return $ fromInteger n
     Nothing -> throwM $ InvalidXML "Failed to read integer value"
 
--- | Parse 'UTCTime' from an 'ISO8601'-formatted 'Text'
-xmlUTCTimeP :: MonadThrow m => Text -> m UTCTime
-xmlUTCTimeP txt = case iso8601ParseM $ T.unpack txt of
+-- | Read a 'Num' type, encoded as an integer, from XML
+xmlNum :: Num a => MonadThrow m => Text -> Cursor Node -> m a
+xmlNum name c = X.forceM (xmlElemError name)
+    $ c $/ X.laxElement name &/ X.content &| xmlInt
+
+-- | Read a 'UTCTime' from an 'ISO8601'-formatted 'Text'
+xmlUTCTime :: MonadThrow m => Text -> m UTCTime
+xmlUTCTime txt = case iso8601ParseM $ T.unpack txt of
     Just t  -> return t
     Nothing -> throwM $ InvalidXML "Failed to read ISO-8601 value"
 
--- | Helper to build exceptions during XML parsing
-xmlAttrError :: Text -> ClientException
-xmlAttrError txt = InvalidXML $ "Missing " <> txt
+isTruncP :: MonadThrow m => Cursor Node -> m Bool
+isTruncP c = X.force (xmlElemError "IsTruncated")
+    $ c $/ X.laxElement "IsTruncated" &/ X.content &| truncP
+  where
+    truncP t = bool False True (t == "true")
 
-xmlMaybeAttr :: Cursor Node -> Text -> Maybe Text
-xmlMaybeAttr cursor name =
+-- | Helper to build exceptions during XML parsing
+xmlElemError :: Text -> ClientException
+xmlElemError txt = InvalidXML $ "Missing " <> txt
+
+-- | Parse the name of a 'Bucket' from XML
+bucketP :: MonadThrow m => Cursor Node -> m Bucket
+bucketP c = X.force (xmlElemError "Bucket")
+    $ c $/ X.laxElement "Bucket" &/ X.content &| coerce
+
+-- | Parse the name of an 'Object' from XML
+objectP :: MonadThrow m => Cursor Node -> m Object
+objectP c = X.force (xmlElemError "Key")
+    $ c $/ X.laxElement "Key" &/ X.content &| coerce
+
+xmlMaybeElem :: Cursor Node -> Text -> Maybe Text
+xmlMaybeElem cursor name =
     listToMaybe $ cursor $/ X.laxElement name &/ X.content
 
 getObjectMetadata :: MonadThrow m => RawResponse m -> m ObjectMetadata
@@ -199,7 +226,7 @@ lookupHeader :: Monad m => RawResponse m -> HeaderName -> MaybeT m ByteString
 lookupHeader raw = MaybeT . return . flip lookup (raw ^. field @"headers")
 
 -- | Transform a 'Header' value into an 'ETag'
-readEtag :: Monad m => ByteString -> MaybeT m Text
+readEtag :: Monad m => ByteString -> MaybeT m ETag
 readEtag = MaybeT . return . fmap unquote . eitherToMaybe . T.decodeUtf8'
 
 -- | Transform a 'Header' value into an 'Int' (for @Content-Length@)

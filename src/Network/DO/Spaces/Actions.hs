@@ -38,6 +38,7 @@ import           Network.DO.Spaces.Actions.GetBucketLocation as M
 import           Network.DO.Spaces.Actions.GetObjectInfo     as M
 import           Network.DO.Spaces.Actions.ListAllBuckets    as M
 import           Network.DO.Spaces.Actions.ListBucket        as M
+import           Network.DO.Spaces.Actions.UploadMultipart   as M
 import           Network.DO.Spaces.Actions.UploadObject      as M
 import           Network.DO.Spaces.Request
                  ( finalize
@@ -54,7 +55,7 @@ import           Network.DO.Spaces.Types
                  )
 import           Network.DO.Spaces.Utils
                  ( handleMaybe
-                 , xmlAttrError
+                 , xmlElemError
                  , xmlDocCursor
                  )
 import           Network.HTTP.Client.Conduit                 ( withResponse )
@@ -94,10 +95,10 @@ parseErrorResponse
     :: (MonadThrow m, MonadIO m) => Status -> RawResponse m -> m APIException
 parseErrorResponse status raw = do
     cursor <- xmlDocCursor raw
-    code <- X.force (xmlAttrError "Code")
+    code <- X.force (xmlElemError "Code")
         $ cursor $/ X.laxElement "Code" &/ X.content
-    requestID <- X.force (xmlAttrError "RequestId")
+    requestID <- X.force (xmlElemError "RequestId")
         $ cursor $/ X.laxElement "RequestId" &/ X.content
-    hostID <- X.force (xmlAttrError "HostId")
+    hostID <- X.force (xmlElemError "HostId")
         $ cursor $/ X.laxElement "HostId" &/ X.content
     return APIException { .. }

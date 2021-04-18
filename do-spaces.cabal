@@ -66,6 +66,7 @@ library
     Network.DO.Spaces.Actions.GetObjectInfo
     Network.DO.Spaces.Actions.ListAllBuckets
     Network.DO.Spaces.Actions.ListBucket
+    Network.DO.Spaces.Actions.UploadMultipart
     Network.DO.Spaces.Actions.UploadObject
     Network.DO.Spaces.Request
     Network.DO.Spaces.Types

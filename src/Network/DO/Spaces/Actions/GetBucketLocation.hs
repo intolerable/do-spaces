@@ -30,7 +30,7 @@ import           Network.DO.Spaces.Types
                  , Region(..)
                  , SpacesRequestBuilder(..)
                  )
-import           Network.DO.Spaces.Utils ( quote, xmlAttrError, xmlDocCursor )
+import           Network.DO.Spaces.Utils ( quote, xmlElemError, xmlDocCursor )
 import qualified Network.HTTP.Types      as H
 
 import qualified Text.XML.Cursor         as X
@@ -72,7 +72,7 @@ instance MonadSpaces m => Action m GetBucketLocation where
     consumeResponse raw = do
         cursor <- xmlDocCursor raw
         GetBucketLocationResponse
-            <$> (X.forceM (xmlAttrError "LocationConstraint")
+            <$> (X.forceM (xmlElemError "LocationConstraint")
                  $ cursor $.// X.laxElement "LocationConstraint" &/ X.content
                  &| slugToRegion . T.strip)
       where

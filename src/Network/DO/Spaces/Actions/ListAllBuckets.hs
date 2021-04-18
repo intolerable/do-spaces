@@ -31,9 +31,9 @@ import           Network.DO.Spaces.Types
                  )
 import           Network.DO.Spaces.Utils
                  ( ownerP
-                 , xmlAttrError
+                 , xmlElemError
                  , xmlDocCursor
-                 , xmlUTCTimeP
+                 , xmlUTCTime
                  )
 
 import qualified Text.XML.Cursor         as X
@@ -64,18 +64,18 @@ instance MonadSpaces m => Action m ListAllBuckets where
 
     consumeResponse raw = do
         cursor <- xmlDocCursor raw
-        owner <- X.forceM (xmlAttrError "Owner")
+        owner <- X.forceM (xmlElemError "Owner")
             $ cursor $/ X.laxElement "Owner" &| ownerP
         buckets <- S.fromList
             <$> (sequence $ cursor $/ X.laxElement "Buckets" &| bucketsP)
         return ListAllBucketsResponse { .. }
       where
-        bucketsP c = X.forceM (xmlAttrError "Bucket")
+        bucketsP c = X.forceM (xmlElemError "Bucket")
             $ c $/ X.laxElement "Bucket" &| bucketInfoP
 
         bucketInfoP c = do
-            name <- X.force (xmlAttrError "Name")
+            name <- X.force (xmlElemError "Name")
                 $ c $/ X.laxElement "Name" &/ X.content &| coerce
-            creationDate <- X.forceM (xmlAttrError "Creation date")
-                $ c $/ X.laxElement "CreationDate" &/ X.content &| xmlUTCTimeP
+            creationDate <- X.forceM (xmlElemError "Creation date")
+                $ c $/ X.laxElement "CreationDate" &/ X.content &| xmlUTCTime
             return BucketInfo { .. }
