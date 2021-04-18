@@ -115,7 +115,7 @@ mkCanonicalized query request payloadHash = Canonicalized
 -- request. Empty query keys require a trailing @=@, which are not included
 -- with 'H.renderQuery'
 renderQueryString :: Query -> ByteString
-renderQueryString = C.intercalate "&" . fmap renderQueryItem
+renderQueryString = C.intercalate "&" . fmap renderQueryItem . sort
   where
     renderQueryItem :: QueryItem -> ByteString
     renderQueryItem (k, Nothing) = k <> "="

@@ -35,6 +35,7 @@ module Network.DO.Spaces.Utils
     , xmlNum
     , bucketP
     , objectP
+    , defaultUploadHeaders
     ) where
 
 import           Conduit                   ( (.|), runConduit )
@@ -232,3 +233,12 @@ readEtag = MaybeT . return . fmap unquote . eitherToMaybe . T.decodeUtf8'
 -- | Transform a 'Header' value into an 'Int' (for @Content-Length@)
 readContentLen :: Monad m => ByteString -> MaybeT m Int
 readContentLen = MaybeT . return . readMaybe @Int . C.unpack
+
+defaultUploadHeaders :: UploadHeaders
+defaultUploadHeaders = UploadHeaders
+    { acl                = Nothing
+    , cacheControl       = Nothing
+    , contentDisposition = Nothing
+    , contentEncoding    = Nothing
+    , metadata           = mempty
+    }

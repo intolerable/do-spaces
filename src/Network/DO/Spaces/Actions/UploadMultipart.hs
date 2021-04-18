@@ -2,6 +2,8 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
+
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
@@ -26,7 +28,9 @@ module Network.DO.Spaces.Actions.UploadMultipart
     , CompleteMultipartResponse(..)
     ) where
 
+import           Control.Monad.Catch         ( MonadThrow(throwM) )
 import           Control.Monad.Reader        ( MonadReader(ask) )
+import           Control.Monad.Trans.Maybe   ( MaybeT(runMaybeT) )
 
 import           Data.ByteString             ( ByteString )
 import           Data.Generics.Product       ( HasField(field) )
@@ -42,11 +46,11 @@ import           Lens.Micro                  ( (^.), (^?) )
 import           Network.DO.Spaces.Types
                  ( Action(..)
                  , Bucket
+                 , ClientException(OtherError)
                  , ETag
-                 , Method(POST, DELETE)
+                 , Method(POST, DELETE, PUT)
                  , MonadSpaces
                  , Object
-                 , Owner
                  , SpacesRequestBuilder(..)
                  , UploadHeaders
                  )
@@ -55,9 +59,9 @@ import           Network.DO.Spaces.Utils
                  , etagP
                  , isTruncP
                  , lastModifiedP
+                 , lookupHeader
                  , objectP
-                 , ownerP
-                 , quote
+                 , readEtag
                  , renderUploadHeaders
                  , tshow
                  , xmlDocCursor
@@ -146,7 +150,7 @@ instance MonadSpaces m => Action m UploadPart where
                { bucket         = session ^? field @"bucket"
                , object         = session ^? field @"object"
                , body           = Just body
-               , method         = Just POST
+               , method         = Just PUT
                , overrideRegion = Nothing
                , headers        = mempty
                , queryString    = Just
@@ -156,7 +160,12 @@ instance MonadSpaces m => Action m UploadPart where
                , ..
                }
 
-    consumeResponse raw = UploadPartResponse <$> (etagP =<< xmlDocCursor raw)
+    consumeResponse raw =
+        runMaybeT (UploadPartResponse
+                   <$> (readEtag =<< lookupHeader raw "etag"))
+        >>= \case
+            Nothing -> throwM $ OtherError "Missing/malformed headers"
+            Just r  -> return r
 
 -- | Complete a multipart session
 data CompleteMultipart = CompleteMultipart
@@ -195,8 +204,8 @@ instance MonadSpaces m => Action m CompleteMultipart where
                , ..
                }
       where
-        body               = Just . RequestBodyLBS
-            $ X.renderLBS X.def (X.Document prologue root mempty)
+        body               = Just . RequestBodyLBS . X.renderLBS X.def
+            $ X.Document prologue root mempty
 
         prologue           = X.Prologue mempty Nothing mempty
 
@@ -206,9 +215,7 @@ instance MonadSpaces m => Action m CompleteMultipart where
         partNode (n, etag) = X.NodeElement
             $ X.Element "Part"
                         mempty
-                        [ mkNode "PartNumber" (tshow n)
-                        , mkNode "ETag" (quote etag)
-                        ]
+                        [ mkNode "PartNumber" (tshow n), mkNode "ETag" etag ]
 
         mkNode name nc =
             X.NodeElement $ X.Element name mempty [ X.NodeContent nc ]
@@ -259,7 +266,6 @@ data ListPartsResponse = ListPartsResponse
     , object         :: Object
     , uploadID       :: UploadID
     , parts          :: Seq Part
-    , owner          :: Owner
     , partMarker     :: Int
       -- ^ Part number marking the beginning of the list
     , nextPartMarker :: Int
@@ -297,8 +303,6 @@ instance MonadSpaces m => Action m ListParts where
             $ cursor $/ X.laxElement "UploadId" &/ X.content
         isTruncated <- isTruncP cursor
         maxParts <- xmlNum "MaxParts" cursor
-        owner <- X.forceM (xmlElemError "Owner")
-            $ cursor $/ X.laxElement "Owner" &| ownerP
         parts <- S.fromList
             <$> sequence (cursor $/ X.laxElement "Part" &| partP)
         partMarker <- xmlNum "PartNumberMarker" cursor

@@ -360,8 +360,6 @@ listPartsResponse = do
         , nextPartMarker = 1
         , maxParts       = 1000
         , isTruncated    = False
-        , owner          =
-              Owner { id' = OwnerID 612423, displayName = OwnerID 612423 }
         , parts          =
               S.fromList [ Part
                            { partNumber   = 1
