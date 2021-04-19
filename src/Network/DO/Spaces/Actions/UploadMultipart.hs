@@ -61,6 +61,7 @@ import           Network.DO.Spaces.Utils
                  , lastModifiedP
                  , lookupHeader
                  , objectP
+                 , quote
                  , readEtag
                  , renderUploadHeaders
                  , tshow
@@ -215,7 +216,9 @@ instance MonadSpaces m => Action m CompleteMultipart where
         partNode (n, etag) = X.NodeElement
             $ X.Element "Part"
                         mempty
-                        [ mkNode "PartNumber" (tshow n), mkNode "ETag" etag ]
+                        [ mkNode "PartNumber" (tshow n)
+                        , mkNode "ETag" (quote etag)
+                        ]
 
         mkNode name nc =
             X.NodeElement $ X.Element name mempty [ X.NodeContent nc ]

@@ -35,6 +35,7 @@ import           Network.DO.Spaces.Actions.CreateBucket      as M
 import           Network.DO.Spaces.Actions.DeleteBucket      as M
 import           Network.DO.Spaces.Actions.DeleteObject      as M
 import           Network.DO.Spaces.Actions.GetBucketLocation as M
+import           Network.DO.Spaces.Actions.GetObject         as M
 import           Network.DO.Spaces.Actions.GetObjectInfo     as M
 import           Network.DO.Spaces.Actions.ListAllBuckets    as M
 import           Network.DO.Spaces.Actions.ListBucket        as M
@@ -55,8 +56,8 @@ import           Network.DO.Spaces.Types
                  )
 import           Network.DO.Spaces.Utils
                  ( handleMaybe
-                 , xmlElemError
                  , xmlDocCursor
+                 , xmlElemError
                  )
 import           Network.HTTP.Client.Conduit                 ( withResponse )
 import qualified Network.HTTP.Conduit                        as H
