@@ -45,7 +45,7 @@ import           Network.DO.Spaces.Utils
                  , toLowerBS
                  )
 import           Network.HTTP.Client.Conduit     ( Request
-                                                 , RequestBody(RequestBodyBS)
+                                                 , RequestBody(RequestBodyLBS)
                                                  )
 import qualified Network.HTTP.Client.Conduit     as H
 import           Network.HTTP.Types              ( Header, Query, QueryItem )
@@ -78,12 +78,13 @@ newSpacesRequest SpacesRequestBuilder { .. } time = do
                   , "digitaloceanspaces.com/"
                   , maybe mempty (T.unpack . coerce) object
                   ]
-    payload <- bodyLBS $ fromMaybe (RequestBodyBS mempty) body
+    payload <- bodyLBS reqBody
     let payloadHash      = hashHex payload
         newHeaders       = overrideReqHeaders req payloadHash time
         request          = req
             { H.requestHeaders = headers <> newHeaders
             , H.queryString    = maybe mempty (H.renderQuery True) queryString
+            , H.requestBody    = reqBody
             }
         canonicalRequest =
             mkCanonicalized (fromMaybe mempty queryString) request payloadHash
@@ -92,6 +93,8 @@ newSpacesRequest SpacesRequestBuilder { .. } time = do
         { method = reqMethod, headers = headers <> newHeaders, .. }
   where
     reqMethod = fromMaybe GET method
+
+    reqBody   = fromMaybe (RequestBodyLBS LB.empty) body
 
 -- | Canonicalize a 'Request'
 mkCanonicalized :: Query
