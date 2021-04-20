@@ -34,9 +34,9 @@ import           Network.DO.Spaces.Utils ( showCannedACL )
 -- | Create a new, empty 'Bucket'
 data CreateBucket = CreateBucket
     { bucket :: Bucket -- ^ The name of the new 'Bucket' to create
+    , region :: Maybe Region
     , acl    :: Maybe CannedACL
       -- ^ The 'CannedACL' to use; defaults to 'Private'
-    , region :: Maybe Region
     }
     deriving ( Show, Eq, Generic )
 

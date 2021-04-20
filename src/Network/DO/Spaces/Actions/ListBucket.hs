@@ -44,8 +44,8 @@ import           Network.DO.Spaces.Utils
                  , isTruncP
                  , lastModifiedP
                  , ownerP
-                 , xmlElemError
                  , xmlDocCursor
+                 , xmlElemError
                  , xmlInt
                  , xmlMaybeElem
                  , xmlNum

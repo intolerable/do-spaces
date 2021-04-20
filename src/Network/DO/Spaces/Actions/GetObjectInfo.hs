@@ -11,7 +11,7 @@
 -- |
 module Network.DO.Spaces.Actions.GetObjectInfo
     ( GetObjectInfo(..)
-    , ObjectInfoResponse
+    , GetObjectInfoResponse
     ) where
 
 import           Control.Monad.Reader    ( MonadReader(ask) )
@@ -31,13 +31,13 @@ import           Network.DO.Spaces.Utils ( getObjectMetadata )
 
 -- | Get information about an 'Object'; the response does not contain the
 -- object itself
-data GetObjectInfo = GetObjectInfo { object :: Object, bucket :: Bucket }
+data GetObjectInfo = GetObjectInfo { bucket :: Bucket, object :: Object }
     deriving ( Show, Eq, Generic )
 
-type ObjectInfoResponse = ObjectMetadata
+type GetObjectInfoResponse = ObjectMetadata
 
 instance MonadSpaces m => Action m GetObjectInfo where
-    type (SpacesResponse GetObjectInfo) = ObjectInfoResponse
+    type (SpacesResponse GetObjectInfo) = GetObjectInfoResponse
 
     buildRequest GetObjectInfo { .. } = do
         spaces <- ask

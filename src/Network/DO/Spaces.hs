@@ -5,7 +5,24 @@
 {-# LANGUAGE RecordWildCards #-}
 
 -- |
-module Network.DO.Spaces ( send, newSpaces, multipart, upload ) where
+module Network.DO.Spaces
+    ( send
+    , newSpaces
+      -- * Convenience actions
+      -- ** Object operations
+    , multipartObject
+    , uploadObject
+    , getObject
+    , getObjectInfo
+    , copyObject
+    , deleteObject
+      -- ** Bucket operations
+    , createBucket
+    , deleteBucket
+    , getBucketLocation
+    , listAllBuckets
+    , listBucket
+    ) where
 
 import           Conduit
                  ( (.|)
@@ -14,7 +31,6 @@ import           Conduit
                  , yield
                  )
 
-import           Control.Exception           ( throwIO )
 import           Control.Monad.Catch         ( MonadThrow(throwM) )
 import           Control.Monad.IO.Class      ( MonadIO(liftIO) )
 import           Control.Monad.Reader.Class  ( ask )
@@ -26,6 +42,7 @@ import           Data.Conduit.Binary         ( sinkLbs )
 import           Data.Conduit.List           ( consume )
 import           Data.Foldable               ( asum )
 import qualified Data.Text                   as T
+import           Data.Text                   ( Text )
 
 import           Network.DO.Spaces.Actions
 import           Network.DO.Spaces.Types
@@ -38,13 +55,14 @@ import           System.Environment          ( lookupEnv )
 
 -- | Perform a transaction using your 'Spaces' client configuration
 send :: Spaces -> SpacesT m a -> m a
-send sp x = runSpacesT x sp
+send = flip runSpacesT
 
 -- | Create a new 'Spaces' from your credentials and a 'Region'
-newSpaces :: Region -> CredentialSource -> IO Spaces
+newSpaces
+    :: (MonadThrow m, MonadIO m) => Region -> CredentialSource -> m Spaces
 newSpaces region cs = do
-    manager <- getGlobalManager
-    (accessKey, secretKey) <- source cs
+    manager <- liftIO getGlobalManager
+    (accessKey, secretKey) <- liftIO $ source cs
     return Spaces { .. }
   where
     source (Explicit ak sk)              = return (ak, sk)
@@ -61,7 +79,7 @@ newSpaces region cs = do
                          ]
         ensureKeys (ak, sk)
 
-    throwMissingKeys k = throwIO . MissingKeys $ "Missing " <> k
+    throwMissingKeys k = throwM . MissingKeys $ "Missing " <> k
 
     lookupKeys xs = asum <$> sequence (lookupEnv <$> xs)
 
@@ -76,28 +94,30 @@ newSpaces region cs = do
     mkKey f = f . C.pack
 
 -- | Upload an 'Object' within a single request
-upload :: MonadSpaces m
-       => Maybe MimeType
-       -> Bucket
-       -> Object
-       -> BodyBS m
-       -> m UploadObjectResponse
-upload mt bucket object body = do
-    rbody <- RequestBodyLBS <$> runConduit (body .| sinkLbs)
-    runAction $ UploadObject bucket object rbody defaultUploadHeaders mt
+uploadObject :: MonadSpaces m
+             => Maybe MimeType
+             -> Bucket
+             -> Object
+             -> BodyBS m
+             -> m UploadObjectResponse
+uploadObject contentType bucket object rbody = do
+    body <- RequestBodyLBS <$> runConduit (rbody .| sinkLbs)
+    runAction UploadObject { optionalHeaders = defaultUploadHeaders, .. }
 
-    -- runAction $ UploadObject bucket object defaultUploadHeaders mt
 -- | Initiate and complete a 'MultiPart' upload, using default 'UploadHeaders'
-multipart :: MonadSpaces m
-          => Maybe MimeType
-          -> Bucket
-          -> Object
-          -> Int
-          -> BodyBS m
-          -> m CompleteMultipartResponse
-multipart mt bucket object size body
+-- TODO handle errors in the conduit pipeline, send CancelMultipart request
+-- upon failure?
+multipartObject
+    :: MonadSpaces m
+    => Maybe MimeType
+    -> Bucket
+    -> Object
+    -> Int
+    -> BodyBS m
+    -> m CompleteMultipartResponse
+multipartObject contentType bucket object size body
     | size < 5242880 = throwM
-        $ OtherError "multipart: Chunk size must be greater than/equal to 5MB"
+        $ OtherError "multipartObject: Chunk size must be greater than/equal to 5MB"
     | otherwise = do
         BeginMultipartResponse session <- beginMultipart
         completeMultipart session
@@ -106,8 +126,8 @@ multipart mt bucket object size body
     completeMultipart session tags = runAction
         $ CompleteMultipart session (zip [ 1 .. ] tags)
 
-    beginMultipart =
-        runAction $ BeginMultipart bucket object defaultUploadHeaders mt
+    beginMultipart = runAction BeginMultipart
+                               { optionalHeaders = defaultUploadHeaders, .. }
 
     putPart session = go 1
       where
@@ -134,3 +154,60 @@ multipart mt bucket object size body
                 newChunk = bs : chunk
 
         yieldChunk = yield . LB.fromChunks . reverse
+
+-- | Get information about an 'Object' (does not retrieve the body of the object)
+getObjectInfo :: MonadSpaces m => Bucket -> Object -> m GetObjectInfoResponse
+getObjectInfo bucket object = runAction GetObjectInfo { .. }
+
+-- | Get an 'Object' (retrieves the actual body of the object)
+getObject :: MonadSpaces m => Bucket -> Object -> m GetObjectResponse
+getObject bucket object = runAction GetObject { .. }
+
+-- | Copy an 'Object' from one 'Bucket' to another, or replace it
+copyObject :: MonadSpaces m
+           => Bucket -- ^ Source 'Bucket'
+           -> Bucket -- ^ Destination 'Bucket'
+           -> Object -- ^ Source 'Object'
+           -> Object -- ^ Destination 'Object'
+           -> MetadataDirective
+           -> Maybe CannedACL
+           -> m CopyObjectResponse
+copyObject srcBucket destBucket srcObject destObject metadataDirective acl =
+    runAction CopyObject { .. }
+
+-- | Delete a single 'Object'
+deleteObject :: MonadSpaces m => Bucket -> Object -> m DeleteObjectResponse
+deleteObject bucket object = runAction DeleteObject { .. }
+
+-- | Create a new 'Bucket'
+createBucket :: MonadSpaces m
+             => Bucket
+             -> Maybe Region -- ^ Overrides the 'Region' in your 'Spaces'
+                             -- configuration
+             -> Maybe CannedACL
+             -> m CreateBucketResponse
+createBucket bucket region acl = runAction CreateBucket { .. }
+
+-- | Delete a 'Bucket'
+deleteBucket :: MonadSpaces m => Bucket -> m DeleteBucketResponse
+deleteBucket bucket = runAction DeleteBucket { .. }
+
+-- | Get the location ('Region') of a 'Bucket'
+getBucketLocation :: MonadSpaces m => Bucket -> m GetBucketLocationResponse
+getBucketLocation bucket = runAction GetBucketLocation { .. }
+
+-- | List every 'Bucket' associated with your Spaces account
+listAllBuckets :: MonadSpaces m => m ListAllBucketsResponse
+listAllBuckets = runAction ListAllBuckets
+
+-- | List the 'Object's of a 'Bucket'
+listBucket :: MonadSpaces m
+           => Bucket
+           -> Maybe Char -- ^ Delimiter
+           -> Maybe Object -- ^ Marker
+           -> Maybe Int -- ^ Maximum keys
+           -> Maybe Text -- ^ Prefix used to group object keys
+           -> m ListBucketResponse
+listBucket bucket delimiter marker maxKeys prefix =
+    runAction ListBucket { .. }
+

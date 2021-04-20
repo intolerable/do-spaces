@@ -50,7 +50,7 @@ import           Network.DO.Spaces.Utils
                  )
 
 -- | Whether the 'Object''s metadata should be copied or replaced. Replace is
--- required to copy and object to itself
+-- required to copy an object to itself
 data MetadataDirective = Copy | Replace
     deriving ( Show, Eq, Generic )
 
