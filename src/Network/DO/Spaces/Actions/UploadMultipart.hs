@@ -3,7 +3,6 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
-
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
@@ -33,6 +32,7 @@ import           Control.Monad.Reader        ( MonadReader(ask) )
 import           Control.Monad.Trans.Maybe   ( MaybeT(runMaybeT) )
 
 import           Data.ByteString             ( ByteString )
+import qualified Data.CaseInsensitive        as CI
 import           Data.Generics.Product       ( HasField(field) )
 import           Data.Sequence               ( Seq )
 import qualified Data.Sequence               as S
@@ -71,6 +71,7 @@ import           Network.DO.Spaces.Utils
                  )
 import           Network.HTTP.Client.Conduit ( RequestBody(RequestBodyLBS) )
 import qualified Network.HTTP.Types          as H
+import           Network.Mime                ( MimeType )
 
 import qualified Text.XML                    as X
 import qualified Text.XML.Cursor             as X
@@ -99,7 +100,8 @@ type UploadID = Text
 data BeginMultipart = BeginMultipart
     { bucket          :: Bucket
     , object          :: Object
-    , optionalHeaders :: UploadHeaders --
+    , optionalHeaders :: UploadHeaders
+    , contentType     :: Maybe MimeType
     }
     deriving ( Show, Eq, Generic )
 
@@ -118,7 +120,6 @@ instance MonadSpaces m => Action m BeginMultipart where
                , method         = Just POST
                , body           = Nothing
                , overrideRegion = Nothing
-               , headers        = renderUploadHeaders optionalHeaders
                , queryString    = Just
                      $ H.toQuery [ ( "uploads" :: ByteString
                                    , Nothing :: Maybe ByteString
@@ -126,6 +127,11 @@ instance MonadSpaces m => Action m BeginMultipart where
                                  ]
                , ..
                }
+      where
+        headers = maybe id
+                        (\ct -> (:) (CI.mk "Content-Type", ct))
+                        contentType
+                        (renderUploadHeaders optionalHeaders)
 
     consumeResponse raw = do
         cursor <- xmlDocCursor raw
