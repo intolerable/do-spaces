@@ -17,6 +17,8 @@ import           Control.Monad.Catch       ( MonadThrow(throwM) )
 import           Control.Monad.Reader      ( MonadReader(ask) )
 import           Control.Monad.Trans.Maybe ( MaybeT(runMaybeT) )
 
+import qualified Data.CaseInsensitive      as CI
+
 import           GHC.Generics              ( Generic )
 
 import           Network.DO.Spaces.Types
@@ -37,14 +39,16 @@ import           Network.DO.Spaces.Utils
                  , renderUploadHeaders
                  )
 import           Network.HTTP.Conduit      ( RequestBody )
+import           Network.Mime              ( MimeType )
 
 -- | Upload a single object to Spaces. The maximum size for a single PUT request
 -- is 5 GB
 data UploadObject = UploadObject
-    { object          :: Object
-    , bucket          :: Bucket
+    { bucket          :: Bucket
+    , object          :: Object
     , body            :: RequestBody
     , optionalHeaders :: UploadHeaders
+    , contentType     :: Maybe MimeType
     }
     deriving ( Generic )
 
@@ -66,9 +70,13 @@ instance MonadSpaces m => Action m UploadObject where
                , body           = Just body
                , queryString    = Nothing
                , overrideRegion = Nothing
-               , headers        = renderUploadHeaders optionalHeaders
                , ..
                }
+      where
+        headers = maybe id
+                        (\ct -> (:) (CI.mk "Content-Type", ct))
+                        contentType
+                        (renderUploadHeaders optionalHeaders)
 
     consumeResponse raw = do
         resp <- runMaybeT
