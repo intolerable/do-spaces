@@ -3,6 +3,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeApplications #-}
 
 -- |
 module Network.DO.Spaces
@@ -31,7 +32,9 @@ import           Conduit
                  , yield
                  )
 
+import           Control.Monad               ( void )
 import           Control.Monad.Catch         ( MonadThrow(throwM) )
+import           Control.Monad.Catch.Pure    ( MonadCatch(catch) )
 import           Control.Monad.IO.Class      ( MonadIO(liftIO) )
 import           Control.Monad.Reader.Class  ( ask )
 
@@ -104,9 +107,10 @@ uploadObject contentType bucket object rbody = do
     body <- RequestBodyLBS <$> runConduit (rbody .| sinkLbs)
     runAction UploadObject { optionalHeaders = defaultUploadHeaders, .. }
 
--- | Initiate and complete a 'MultiPart' upload, using default 'UploadHeaders'
--- TODO handle errors in the conduit pipeline, send CancelMultipart request
--- upon failure?
+-- | Initiate and complete a 'MultiPart' upload, using default 'UploadHeaders'.
+-- If a 'SpacesException' is thrown while performing the transaction, an attempt
+-- will be made to send a 'CancelMultipart' request, and the exception will be
+-- rethrown
 multipartObject
     :: MonadSpaces m
     => Maybe MimeType
@@ -120,9 +124,13 @@ multipartObject contentType bucket object size body
         $ OtherError "multipartObject: Chunk size must be greater than/equal to 5MB"
     | otherwise = do
         BeginMultipartResponse session <- beginMultipart
-        completeMultipart session
-            =<< runConduit (body .| inChunks .| putPart session .| consume)
+        catch @_ @SpacesException (run session) $ \e -> do
+            void . runAction $ CancelMultipart session
+            throwM e
   where
+    run session = completeMultipart session
+        =<< runConduit (body .| inChunks .| putPart session .| consume)
+
     completeMultipart session tags = runAction
         $ CompleteMultipart session (zip [ 1 .. ] tags)
 
