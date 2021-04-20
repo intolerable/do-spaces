@@ -31,12 +31,9 @@ import           Network.HTTP.Client.TLS   ( getGlobalManager )
 
 import           System.Environment        ( lookupEnv )
 
--- | For convenience; run an 'Action' with a given 'Spaces' client
-send :: (MonadUnliftIO m, MonadCatch m, Action (SpacesT m) a)
-     => a
-     -> Spaces
-     -> m (SpacesResponse a)
-send action = runSpacesT (runAction action)
+-- | Perform a transaction using your 'Spaces' client configuration
+send :: Spaces -> SpacesT m a -> m a
+send sp x = runSpacesT x sp
 
 -- | Create a new 'Spaces' from your credentials and a 'Region'
 newSpaces :: Region -> CredentialSource -> IO Spaces
