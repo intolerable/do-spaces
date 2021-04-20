@@ -5,7 +5,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 -- |
-module Network.DO.Spaces ( send, newSpaces, multipart ) where
+module Network.DO.Spaces ( send, newSpaces, multipart, upload ) where
 
 import           Conduit
                  ( (.|)
@@ -22,6 +22,7 @@ import           Control.Monad.Reader.Class  ( ask )
 import           Data.Bool                   ( bool )
 import qualified Data.ByteString.Char8       as C
 import qualified Data.ByteString.Lazy        as LB
+import           Data.Conduit.Binary         ( sinkLbs )
 import           Data.Conduit.List           ( consume )
 import           Data.Foldable               ( asum )
 import qualified Data.Text                   as T
@@ -74,6 +75,18 @@ newSpaces region cs = do
 
     mkKey f = f . C.pack
 
+-- | Upload an 'Object' within a single request
+upload :: MonadSpaces m
+       => Maybe MimeType
+       -> Bucket
+       -> Object
+       -> BodyBS m
+       -> m UploadObjectResponse
+upload mt bucket object body = do
+    rbody <- RequestBodyLBS <$> runConduit (body .| sinkLbs)
+    runAction $ UploadObject bucket object rbody defaultUploadHeaders mt
+
+    -- runAction $ UploadObject bucket object defaultUploadHeaders mt
 -- | Initiate and complete a 'MultiPart' upload, using default 'UploadHeaders'
 multipart :: MonadSpaces m
           => Maybe MimeType
@@ -82,13 +95,13 @@ multipart :: MonadSpaces m
           -> Int
           -> BodyBS m
           -> m CompleteMultipartResponse
-multipart mt bucket object size src
+multipart mt bucket object size body
     | size < 5242880 = throwM
         $ OtherError "multipart: Chunk size must be greater than/equal to 5MB"
     | otherwise = do
         BeginMultipartResponse session <- beginMultipart
         completeMultipart session
-            =<< runConduit (src .| inChunks .| putPart session .| consume)
+            =<< runConduit (body .| inChunks .| putPart session .| consume)
   where
     completeMultipart session tags = runAction
         $ CompleteMultipart session (zip [ 1 .. ] tags)
