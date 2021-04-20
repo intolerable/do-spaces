@@ -1,35 +1,39 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 
 -- |
-module Network.DO.Spaces ( newSpaces, send ) where
+module Network.DO.Spaces ( send, newSpaces, multipart ) where
 
-import           Conduit                   ( MonadUnliftIO )
-
-import           Control.Exception         ( throwIO )
-import           Control.Monad.Catch       ( MonadCatch )
-
-import qualified Data.ByteString.Char8     as C
-import           Data.Foldable             ( asum )
-import qualified Data.Text                 as T
-
-import           Network.DO.Spaces.Actions ( runAction )
-import           Network.DO.Spaces.Types
-                 ( AccessKey(..)
-                 , Action(SpacesResponse)
-                 , ClientException(MissingKeys)
-                 , CredentialSource(..)
-                 , Region
-                 , SecretKey(..)
-                 , Spaces(..)
-                 , SpacesT
-                 , runSpacesT
+import           Conduit
+                 ( (.|)
+                 , await
+                 , runConduit
+                 , yield
                  )
-import           Network.HTTP.Client.TLS   ( getGlobalManager )
 
-import           System.Environment        ( lookupEnv )
+import           Control.Exception           ( throwIO )
+import           Control.Monad.Catch         ( MonadThrow(throwM) )
+import           Control.Monad.IO.Class      ( MonadIO(liftIO) )
+import           Control.Monad.Reader.Class  ( ask )
+
+import           Data.Bool                   ( bool )
+import qualified Data.ByteString.Char8       as C
+import qualified Data.ByteString.Lazy        as LB
+import           Data.Conduit.List           ( consume )
+import           Data.Foldable               ( asum )
+import qualified Data.Text                   as T
+
+import           Network.DO.Spaces.Actions
+import           Network.DO.Spaces.Types
+import           Network.DO.Spaces.Utils     ( defaultUploadHeaders )
+import           Network.HTTP.Client.Conduit ( RequestBody(RequestBodyLBS) )
+import           Network.HTTP.Client.TLS     ( getGlobalManager )
+import           Network.Mime                ( MimeType )
+
+import           System.Environment          ( lookupEnv )
 
 -- | Perform a transaction using your 'Spaces' client configuration
 send :: Spaces -> SpacesT m a -> m a
@@ -69,3 +73,51 @@ newSpaces region cs = do
         (_, _)           -> throwMissingKeys "secret and access keys"
 
     mkKey f = f . C.pack
+
+-- | Initiate and complete a 'MultiPart' upload, using default 'UploadHeaders'
+multipart :: MonadSpaces m
+          => Maybe MimeType
+          -> Bucket
+          -> Object
+          -> Int
+          -> BodyBS m
+          -> m CompleteMultipartResponse
+multipart mt bucket object size src
+    | size < 5242880 = throwM
+        $ OtherError "multipart: Chunk size must be greater than/equal to 5MB"
+    | otherwise = do
+        BeginMultipartResponse session <- beginMultipart
+        completeMultipart session
+            =<< runConduit (src .| inChunks .| putPart session .| consume)
+  where
+    completeMultipart session tags = runAction
+        $ CompleteMultipart session (zip [ 1 .. ] tags)
+
+    beginMultipart =
+        runAction $ BeginMultipart bucket object defaultUploadHeaders mt
+
+    putPart session = go 1
+      where
+        go n = await >>= \case
+            Nothing -> return ()
+            Just v  -> do
+                spaces <- ask
+                UploadPartResponse { etag } <- liftIO
+                    $ send spaces
+                           (runAction
+                            $ UploadPart session n (RequestBodyLBS v))
+                yield etag >> go (n + 1)
+
+    inChunks = loop 0 []
+      where
+        loop n chunk = await >>= maybe (yieldChunk chunk) go
+          where
+            go bs = bool (loop len newChunk)
+                         (yieldChunk newChunk >> loop 0 [])
+                         (size <= len)
+              where
+                len      = C.length bs + n
+
+                newChunk = bs : chunk
+
+        yieldChunk = yield . LB.fromChunks . reverse

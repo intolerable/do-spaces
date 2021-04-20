@@ -60,6 +60,7 @@ module Network.DO.Spaces.Types
     , ContentEncoding
     , UserMetadata
     , UploadHeaders(..)
+    , BodyBS
     ) where
 
 import           Conduit                     ( ConduitT, MonadUnliftIO )
@@ -313,9 +314,11 @@ class Monad m => Action m a where
     buildRequest :: a -> m SpacesRequestBuilder
     consumeResponse :: RawResponse m -> m (SpacesResponse a)
 
-data RawResponse m =
-    RawResponse { headers :: [Header], body :: ConduitT () ByteString m () }
+data RawResponse m = RawResponse { headers :: [Header], body :: BodyBS m }
     deriving ( Generic )
+
+-- | A request or response body
+type BodyBS m = ConduitT () ByteString m ()
 
 -- How to discover 'AccessKey's and 'SecretKey's when creating a new
 -- 'Spaces' object
