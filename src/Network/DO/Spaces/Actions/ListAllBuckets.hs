@@ -8,6 +8,13 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 -- |
+-- Module      : Network.DO.Spaces.Actions.ListAllBuckets
+-- Copyright   : (c) 2021 Rory Tyler Hayford
+-- License     : BSD-3-Clause
+-- Maintainer  : rory.hayford@protonmail.com
+-- Stability   : experimental
+-- Portability : GHC
+--
 module Network.DO.Spaces.Actions.ListAllBuckets
     ( ListAllBuckets(..)
     , ListAllBucketsResponse(..)
@@ -31,14 +38,15 @@ import           Network.DO.Spaces.Types
                  )
 import           Network.DO.Spaces.Utils
                  ( ownerP
-                 , xmlElemError
                  , xmlDocCursor
+                 , xmlElemError
                  , xmlUTCTime
                  )
 
 import qualified Text.XML.Cursor         as X
 import           Text.XML.Cursor         ( ($/), (&/), (&|) )
 
+-- | List all of your 'Bucket's withing the 'Region' you have configured
 data ListAllBuckets = ListAllBuckets
     deriving ( Show, Eq, Generic )
 

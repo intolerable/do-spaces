@@ -8,6 +8,13 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 -- |
+-- Module      : Network.DO.Spaces.Actions.DeleteObject
+-- Copyright   : (c) 2021 Rory Tyler Hayford
+-- License     : BSD-3-Clause
+-- Maintainer  : rory.hayford@protonmail.com
+-- Stability   : experimental
+-- Portability : GHC
+--
 module Network.DO.Spaces.Actions.DeleteObject
     ( DeleteObject(..)
     , DeleteObjectResponse

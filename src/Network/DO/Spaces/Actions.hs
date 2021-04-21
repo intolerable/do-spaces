@@ -5,6 +5,15 @@
 {-# LANGUAGE TypeApplications #-}
 
 -- |
+-- Module      : Network.DO.Spaces.Actions
+-- Copyright   : (c) 2021 Rory Tyler Hayford
+-- License     : BSD-3-Clause
+-- Maintainer  : rory.hayford@protonmail.com
+-- Stability   : experimental
+-- Portability : GHC
+--
+-- This module re-exports the 'Action' instances in the modules below it
+--
 module Network.DO.Spaces.Actions
     ( runAction
     , parseErrorResponse

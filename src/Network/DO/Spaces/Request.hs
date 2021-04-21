@@ -3,6 +3,17 @@
 {-# LANGUAGE TypeApplications #-}
 
 -- |
+-- Module      : Network.DO.Spaces.Request
+-- Copyright   : (c) 2021 Rory Tyler Hayford
+-- License     : BSD-3-Clause
+-- Maintainer  : rory.hayford@protonmail.com
+-- Stability   : experimental
+-- Portability : GHC
+--
+-- Low-level implementations of Spaces REST transactions. You should not import
+-- this module directly, but should instead use the higher-level interface exposed
+-- by "Network.DO.Spaces.Actions" and its submodules
+--
 module Network.DO.Spaces.Request
     ( newSpacesRequest
     , mkSignature

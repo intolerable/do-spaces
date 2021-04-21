@@ -9,6 +9,13 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 -- |
+-- Module      : Network.DO.Spaces.Actions.GetObject
+-- Copyright   : (c) 2021 Rory Tyler Hayford
+-- License     : BSD-3-Clause
+-- Maintainer  : rory.hayford@protonmail.com
+-- Stability   : experimental
+-- Portability : GHC
+--
 module Network.DO.Spaces.Actions.GetObject
     ( GetObject(..)
     , GetObjectResponse(..)
@@ -32,7 +39,7 @@ import           Network.DO.Spaces.Types
                  , RawResponse(..)
                  , SpacesRequestBuilder(..)
                  )
-import           Network.DO.Spaces.Utils ( getObjectMetadata )
+import           Network.DO.Spaces.Utils ( lookupObjectMetadata )
 
 -- | Retrieve an 'Object' along with its associated metadata. The object's data
 -- is read into a lazy 'LB.ByteString'
@@ -60,5 +67,5 @@ instance MonadSpaces m => Action m GetObject where
                }
 
     consumeResponse raw@RawResponse { .. } = GetObjectResponse
-        <$> getObjectMetadata raw
+        <$> lookupObjectMetadata raw
         <*> runConduit (body .| sinkLbs)

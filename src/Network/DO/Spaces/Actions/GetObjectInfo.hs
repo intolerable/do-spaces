@@ -9,6 +9,13 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 -- |
+-- Module      : Network.DO.Spaces.Actions.GetObjectInfo
+-- Copyright   : (c) 2021 Rory Tyler Hayford
+-- License     : BSD-3-Clause
+-- Maintainer  : rory.hayford@protonmail.com
+-- Stability   : experimental
+-- Portability : GHC
+--
 module Network.DO.Spaces.Actions.GetObjectInfo
     ( GetObjectInfo(..)
     , GetObjectInfoResponse
@@ -27,7 +34,7 @@ import           Network.DO.Spaces.Types
                  , ObjectMetadata(..)
                  , SpacesRequestBuilder(..)
                  )
-import           Network.DO.Spaces.Utils ( getObjectMetadata )
+import           Network.DO.Spaces.Utils ( lookupObjectMetadata )
 
 -- | Get information about an 'Object'; the response does not contain the
 -- object itself
@@ -52,4 +59,4 @@ instance MonadSpaces m => Action m GetObjectInfo where
                , ..
                }
 
-    consumeResponse = getObjectMetadata
+    consumeResponse = lookupObjectMetadata

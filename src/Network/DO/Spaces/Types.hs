@@ -8,12 +8,19 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
+-- Module      : Network.DO.Spaces.Types
+-- Copyright   : (c) 2021 Rory Tyler Hayford
+-- License     : BSD-3-Clause
+-- Maintainer  : rory.hayford@protonmail.com
+-- Stability   : experimental
+-- Portability : GHC
+--
+--
 module Network.DO.Spaces.Types
     ( -- * Spaces
       SpacesT(..)
@@ -22,7 +29,7 @@ module Network.DO.Spaces.Types
     , MonadSpaces
     , Action(..)
     , CredentialSource(..)
-      -- * Making requests
+      -- * Requests and responses
     , SpacesRequest(..)
     , SpacesRequestBuilder(..)
     , RawResponse(..)
@@ -38,6 +45,13 @@ module Network.DO.Spaces.Types
     , Credentials
     , Authorization
     , uncompute
+    , ETag
+    , CacheControl
+    , ContentDisposition
+    , ContentEncoding
+    , UserMetadata
+    , UploadHeaders(..)
+    , BodyBS
       -- * Buckets and Objects
     , Object(..)
     , mkObject
@@ -54,13 +68,6 @@ module Network.DO.Spaces.Types
     , ClientException(..)
     , SpacesException(..)
     , APIException(..)
-    , ETag
-    , CacheControl
-    , ContentDisposition
-    , ContentEncoding
-    , UserMetadata
-    , UploadHeaders(..)
-    , BodyBS
     ) where
 
 import           Conduit                     ( ConduitT, MonadUnliftIO )
@@ -77,7 +84,6 @@ import           Control.Monad.Reader        ( MonadReader
                                              , ReaderT(ReaderT, runReaderT)
                                              )
 
-import           Data.Bool                   ( bool )
 import           Data.ByteString             ( ByteString )
 import qualified Data.ByteString.Lazy        as LB
 import           Data.Char                   ( isAlpha, isDigit, toLower )

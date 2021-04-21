@@ -3,39 +3,50 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TupleSections #-}
-
 {-# LANGUAGE TypeApplications #-}
 
 -- |
+-- Module      : Network.DO.Spaces.Utils
+-- Copyright   : (c) 2021 Rory Tyler Hayford
+-- License     : BSD-3-Clause
+-- Maintainer  : rory.hayford@protonmail.com
+-- Stability   : experimental
+-- Portability : GHC
+--
+-- Small utilities
+--
 module Network.DO.Spaces.Utils
-    ( regionSlug
+    ( -- * General utilities
+      tshow
+    , bshow
+    , unquote
+    , quote
+    , bodyLBS
     , toLowerBS
+    , handleMaybe
+    , regionSlug
+    , showCannedACL
+    , renderUploadHeaders
+    , defaultUploadHeaders
+      -- * Parsing/reading
+      -- ** XML
+    , xmlDocCursor
     , xmlInt
     , xmlElemError
     , xmlUTCTime
-    , bshow
-    , ownerP
-    , xmlDocCursor
+    , xmlNum
     , xmlMaybeElem
-    , showCannedACL
-    , handleMaybe
-    , unquote
-    , eitherToMaybe
-    , quote
+    , isTruncP
+    , bucketP
+    , objectP
     , etagP
+    , ownerP
     , lastModifiedP
-    , getObjectMetadata
-    , bodyLBS
-    , tshow
+      -- ** Response headers
+    , lookupObjectMetadata
     , lookupHeader
     , readEtag
     , readContentLen
-    , renderUploadHeaders
-    , isTruncP
-    , xmlNum
-    , bucketP
-    , objectP
-    , defaultUploadHeaders
     ) where
 
 import           Conduit                   ( (.|), runConduit )
@@ -56,6 +67,7 @@ import qualified Data.ByteString.Lazy      as LB
 import qualified Data.CaseInsensitive      as CI
 import           Data.Char                 ( toLower )
 import           Data.Coerce               ( coerce )
+import           Data.Either.Extra         ( eitherToMaybe )
 import           Data.Generics.Product     ( HasField(field) )
 import           Data.Maybe                ( catMaybes, listToMaybe )
 import           Data.String               ( IsString )
@@ -111,10 +123,6 @@ unquote = T.dropAround ('"' ==)
 
 quote :: (IsString a, Monoid a) => a -> a
 quote x = "\"" <> x <> "\""
-
-eitherToMaybe :: Either a b -> Maybe b
-eitherToMaybe (Right x) = Just x
-eitherToMaybe _         = Nothing
 
 showCannedACL :: IsString a => CannedACL -> a
 showCannedACL = \case
@@ -203,8 +211,8 @@ xmlMaybeElem :: Cursor Node -> Text -> Maybe Text
 xmlMaybeElem cursor name =
     listToMaybe $ cursor $/ X.laxElement name &/ X.content
 
-getObjectMetadata :: MonadThrow m => RawResponse m -> m ObjectMetadata
-getObjectMetadata raw = do
+lookupObjectMetadata :: MonadThrow m => RawResponse m -> m ObjectMetadata
+lookupObjectMetadata raw = do
     metadata <- runMaybeT
         $ ObjectMetadata
         <$> (readContentLen =<< lookupHeader' "Content-Length")
