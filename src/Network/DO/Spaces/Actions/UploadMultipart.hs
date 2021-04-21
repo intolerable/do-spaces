@@ -110,7 +110,7 @@ newtype BeginMultipartResponse =
     deriving ( Show, Eq, Generic )
 
 instance MonadSpaces m => Action m BeginMultipart where
-    type (SpacesResponse BeginMultipart) = BeginMultipartResponse
+    type (ConsumedResponse BeginMultipart) = BeginMultipartResponse
 
     buildRequest BeginMultipart { .. } = do
         spaces <- ask
@@ -149,7 +149,7 @@ data UploadPartResponse = UploadPartResponse { etag :: ETag }
     deriving ( Show, Eq, Generic )
 
 instance MonadSpaces m => Action m UploadPart where
-    type (SpacesResponse UploadPart) = UploadPartResponse
+    type (ConsumedResponse UploadPart) = UploadPartResponse
 
     buildRequest UploadPart { .. } = do
         spaces <- ask
@@ -193,7 +193,7 @@ data CompleteMultipartResponse = CompleteMultipartResponse
     deriving ( Show, Eq, Generic )
 
 instance MonadSpaces m => Action m CompleteMultipart where
-    type (SpacesResponse CompleteMultipart) = CompleteMultipartResponse
+    type (ConsumedResponse CompleteMultipart) = CompleteMultipartResponse
 
     buildRequest CompleteMultipart { .. } = do
         spaces <- ask
@@ -245,7 +245,7 @@ newtype CancelMultipart = CancelMultipart { session :: MultipartSession }
 type CancelMultipartResponse = ()
 
 instance MonadSpaces m => Action m CancelMultipart where
-    type (SpacesResponse CancelMultipart) = CancelMultipartResponse
+    type (ConsumedResponse CancelMultipart) = CancelMultipartResponse
 
     buildRequest CancelMultipart { .. } = do
         spaces <- ask
@@ -285,7 +285,7 @@ data ListPartsResponse = ListPartsResponse
     deriving ( Show, Eq, Generic )
 
 instance MonadSpaces m => Action m ListParts where
-    type (SpacesResponse ListParts) = ListPartsResponse
+    type (ConsumedResponse ListParts) = ListPartsResponse
 
     buildRequest ListParts { .. } = do
         spaces <- ask

@@ -50,7 +50,7 @@ data GetBucketLocationResponse = GetBucketLocationResponse
     deriving ( Show, Eq, Generic )
 
 instance MonadSpaces m => Action m GetBucketLocation where
-    type (SpacesResponse GetBucketLocation) = GetBucketLocationResponse
+    type (ConsumedResponse GetBucketLocation) = GetBucketLocationResponse
 
     buildRequest GetBucketLocation { .. } = do
         spaces <- ask

@@ -71,7 +71,7 @@ data CopyObjectResponse =
     deriving ( Show, Eq, Generic )
 
 instance MonadSpaces m => Action m CopyObject where
-    type SpacesResponse CopyObject = CopyObjectResponse
+    type ConsumedResponse CopyObject = CopyObjectResponse
 
     buildRequest CopyObject { .. } = do
         when (and [ srcObject == destObject, metadataDirective == Copy ])

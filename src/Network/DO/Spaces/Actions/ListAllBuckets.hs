@@ -47,7 +47,7 @@ data ListAllBucketsResponse =
     deriving ( Show, Eq, Generic )
 
 instance MonadSpaces m => Action m ListAllBuckets where
-    type SpacesResponse ListAllBuckets = ListAllBucketsResponse
+    type ConsumedResponse ListAllBuckets = ListAllBucketsResponse
 
     buildRequest _ = do
         spaces <- ask

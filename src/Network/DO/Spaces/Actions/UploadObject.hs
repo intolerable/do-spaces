@@ -59,7 +59,7 @@ data UploadObjectResponse = UploadObjectResponse
     deriving ( Show, Eq, Generic )
 
 instance MonadSpaces m => Action m UploadObject where
-    type (SpacesResponse UploadObject) = UploadObjectResponse
+    type (ConsumedResponse UploadObject) = UploadObjectResponse
 
     buildRequest UploadObject { .. } = do
         spaces <- ask

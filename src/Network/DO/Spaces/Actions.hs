@@ -67,9 +67,9 @@ import           Network.HTTP.Types                          ( Status )
 import qualified Text.XML.Cursor                             as X
 import           Text.XML.Cursor                             ( ($/), (&/) )
 
--- | Run an instance of 'Action', receiving a 'SpacesResponse'
+-- | Run an instance of 'Action', receiving a 'ConsumedResponse'
 runAction
-    :: forall a m. (MonadSpaces m, Action m a) => a -> m (SpacesResponse a)
+    :: forall a m. (MonadSpaces m, Action m a) => a -> m (ConsumedResponse a)
 runAction action = do
     now <- liftIO getCurrentTime
     reqBuilder <- buildRequest @_ @a action

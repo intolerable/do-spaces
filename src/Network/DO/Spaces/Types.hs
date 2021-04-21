@@ -340,10 +340,10 @@ newtype SecretKey = SecretKey { unSecretKey :: ByteString }
 -- Generate a 'SpacesRequestBuilder' for a given type, settings the appropriate
 -- specific 'Header's, etc..., for that type
 class Monad m => Action m a where
-    type SpacesResponse a :: Type
+    type ConsumedResponse a :: Type
 
     buildRequest :: a -> m SpacesRequestBuilder
-    consumeResponse :: RawResponse m -> m (SpacesResponse a)
+    consumeResponse :: RawResponse m -> m (ConsumedResponse a)
 
 data RawResponse m = RawResponse { headers :: [Header], body :: BodyBS m }
     deriving ( Generic )

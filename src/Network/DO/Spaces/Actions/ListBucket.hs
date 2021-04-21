@@ -88,7 +88,7 @@ data ListBucketResponse = ListBucketResponse
     deriving ( Show, Eq, Generic )
 
 instance MonadSpaces m => Action m ListBucket where
-    type (SpacesResponse ListBucket) = ListBucketResponse
+    type (ConsumedResponse ListBucket) = ListBucketResponse
 
     buildRequest ListBucket { .. } = do
         when (Just True == orM [ (< 0) <$> maxKeys, (> 1000) <$> maxKeys ])

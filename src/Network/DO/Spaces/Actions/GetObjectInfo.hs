@@ -37,7 +37,7 @@ data GetObjectInfo = GetObjectInfo { bucket :: Bucket, object :: Object }
 type GetObjectInfoResponse = ObjectMetadata
 
 instance MonadSpaces m => Action m GetObjectInfo where
-    type (SpacesResponse GetObjectInfo) = GetObjectInfoResponse
+    type (ConsumedResponse GetObjectInfo) = GetObjectInfoResponse
 
     buildRequest GetObjectInfo { .. } = do
         spaces <- ask

@@ -44,7 +44,7 @@ data GetObjectResponse = GetObjectResponse
     deriving ( Show, Eq, Generic )
 
 instance MonadSpaces m => Action m GetObject where
-    type (SpacesResponse GetObject) = GetObjectResponse
+    type (ConsumedResponse GetObject) = GetObjectResponse
 
     buildRequest GetObject { .. } = do
         spaces <- ask
