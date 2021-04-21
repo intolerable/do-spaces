@@ -7,7 +7,7 @@
 
 -- |
 module Network.DO.Spaces
-    ( send
+    ( runSpaces
     , newSpaces
       -- * Convenience actions
       -- ** Object operations
@@ -57,8 +57,8 @@ import           Network.Mime                ( MimeType )
 import           System.Environment          ( lookupEnv )
 
 -- | Perform a transaction using your 'Spaces' client configuration
-send :: Spaces -> SpacesT m a -> m a
-send = flip runSpacesT
+runSpaces :: Spaces -> SpacesT m a -> m a
+runSpaces = flip runSpacesT
 
 -- | Create a new 'Spaces' from your credentials and a 'Region'
 newSpaces
@@ -109,7 +109,7 @@ uploadObject contentType bucket object rbody = do
 
 -- | Initiate and complete a 'MultiPart' upload, using default 'UploadHeaders'.
 -- If a 'SpacesException' is thrown while performing the transaction, an attempt
--- will be made to send a 'CancelMultipart' request, and the exception will be
+-- will be made to runSpaces a 'CancelMultipart' request, and the exception will be
 -- rethrown
 multipartObject
     :: MonadSpaces m
@@ -144,9 +144,9 @@ multipartObject contentType bucket object size body
             Just v  -> do
                 spaces <- ask
                 UploadPartResponse { etag } <- liftIO
-                    $ send spaces
-                           (runAction
-                            $ UploadPart session n (RequestBodyLBS v))
+                    $ runSpaces spaces
+                                (runAction
+                                 $ UploadPart session n (RequestBodyLBS v))
                 yield etag >> go (n + 1)
 
     inChunks = loop 0 []
