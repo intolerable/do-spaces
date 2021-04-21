@@ -9,8 +9,11 @@ import           Conduit                   ( sourceLazy, withSourceFile )
 
 import qualified Data.ByteString.Char8     as C
 import qualified Data.CaseInsensitive      as CI
+import           Data.Foldable             ( for_ )
 import           Data.Function             ( (&) )
+import           Data.Maybe                ( isJust )
 import qualified Data.Sequence             as S
+import qualified Data.Text                 as T
 import           Data.Time                 ( UTCTime )
 import           Data.Time.Format.ISO8601  ( iso8601ParseM )
 
@@ -43,6 +46,7 @@ import           Test.Hspec
                  , hspec
                  , it
                  , shouldBe
+                 , shouldSatisfy
                  , shouldThrow
                  )
 
@@ -56,6 +60,7 @@ main = sequence_ [ requests
                  , copyObject
                  , beginMultipartResponse
                  , listPartsResponse
+                 , bucketName
                  ]
 
 requests :: IO ()
@@ -375,3 +380,23 @@ listPartsResponse = do
                            }
                          ]
         }
+
+bucketName :: IO ()
+bucketName = hspec . describe "mkBucket constructor" $ do
+    it "rejects invalid Bucket names"
+        . for_ [ "doc_example_bucket"
+               , "doc-example-bucket-"
+               , "do"
+               , T.replicate 64 "d"
+               ]
+        $ \name -> mkBucket name `shouldThrow` matchErr
+
+    it "accepts valid Bucket names"
+        . for_ [ "docexamplebucket1"
+               , "log-delivery-march-2020"
+               , "my-hosted-content"
+               ]
+        $ \name -> mkBucket @Maybe name `shouldSatisfy` isJust
+  where
+    matchErr (OtherError _) = True
+    matchErr _              = False

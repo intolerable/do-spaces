@@ -77,11 +77,15 @@ import           Control.Monad.Reader        ( MonadReader
                                              , ReaderT(ReaderT, runReaderT)
                                              )
 
+import           Data.Bool                   ( bool )
 import           Data.ByteString             ( ByteString )
 import qualified Data.ByteString.Lazy        as LB
+import           Data.Char                   ( isAlpha, isDigit, toLower )
 import           Data.Data                   ( Typeable )
+import           Data.Ix                     ( inRange )
 import           Data.Kind                   ( Type )
 import           Data.Text                   ( Text )
+import qualified Data.Text                   as T
 import           Data.Time                   ( UTCTime )
 import           Data.Typeable               ( cast )
 
@@ -162,17 +166,43 @@ data Region
 data Method = GET | POST | PUT | DELETE | HEAD
     deriving ( Show, Eq, Generic )
 
-mkName :: MonadThrow m => (Text -> a) -> Text -> Text -> m a
-mkName _ ty "" = throwM . OtherError $ ty <> ": Name must not be empty"
-mkName f _ x   = return $ f x
-
 -- | The name of a single storage bucket
 newtype Bucket = Bucket { unBucket :: Text }
     deriving ( Show, Eq, Generic )
 
--- | Smart constructor for 'Bucket's; names must not be empty
+-- | Smart constructor for 'Bucket's; names must conform to the following rules:
+--
+--      * They must be between 3 and 63 characters in length
+--      * They may only contain lowercase letters, digits, dots, and hyphens
+--      * They must begin and end in a number or letter
+-- See more at:
+-- <https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html>.
+--
+-- This function ensures that names are valid and will also convert the 'Text'
+-- to lowercase
 mkBucket :: MonadThrow m => Text -> m Bucket
-mkBucket = mkName Bucket "Bucket"
+mkBucket t
+    | not $ inRange (3, 63) len =
+        bucketErr "Name must be between 3-63 characters"
+    | not $ T.all (or . okChars) t = bucketErr
+        $ mconcat [ "Names may only consist of "
+                  , "lowercase letters, digits, dots, and hyphens"
+                  ]
+    -- Yes, partial. But the length of the Text has already been
+    -- established and using uncons/unsnoc would be redundant
+    | T.head t `elem` [ '.', '-' ] =
+        bucketErr "Name must begin with a letter or digit"
+    | T.last t
+        `elem` [ '.', '-' ] = bucketErr "Name must end with a letter or digit"
+    | otherwise = return . Bucket $ T.map toLower t
+  where
+    len         = T.length t
+
+    -- isAlphaNum may select non-ASCII digits, but isDigit doesn't.
+    -- It's better to check isDigit and isAlpha separately
+    okChars c = [ ('.' ==), ('-' ==), isDigit, isAlpha ] <*> [ c ]
+
+    bucketErr e = throwM . OtherError $ "Bucket: " <> e
 
 -- | Information about a single 'Bucket'
 data BucketInfo = BucketInfo { name :: Bucket, creationDate :: UTCTime }
@@ -184,7 +214,8 @@ newtype Object = Object { unObject :: Text }
 
 -- | Smart constructor for 'Object's; names must not be empty
 mkObject :: MonadThrow m => Text -> m Object
-mkObject = mkName Object "Object"
+mkObject "" = throwM . OtherError $ "Object: Name must not be empty"
+mkObject x  = return $ Object x
 
 -- | Information about a single 'Object', returned when listing a 'Bucket''s
 -- contents
