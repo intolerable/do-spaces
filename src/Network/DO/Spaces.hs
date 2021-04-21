@@ -6,10 +6,24 @@
 {-# LANGUAGE TypeApplications #-}
 
 -- |
+-- Module      : Network.DO.Spaces
+-- Copyright   : (c) 2021 Rory Tyler Hayford
+-- License     : BSD-3-Clause
+-- Maintainer  : rory.hayford@protonmail.com
+-- Stability   : experimental
+-- Portability : GHC
+--
+-- Interacting with DigitalOcean's Spaces API, a (largely) s3-compatible object
+-- storage platform. This module exports actions to create a 'Spaces' client
+-- configuration as well as several convenience actions. Most of the transactions
+-- exposed through the Spaces REST API are supported here, including CRUD operations
+-- on buckets and objects
+--
 module Network.DO.Spaces
     ( runSpaces
     , newSpaces
       -- * Convenience actions
+      -- $conv
       -- ** Object operations
     , multipartObject
     , uploadObject
@@ -23,6 +37,13 @@ module Network.DO.Spaces
     , getBucketLocation
     , listAllBuckets
     , listBucket
+      -- * Type re-exports
+    , Bucket
+    , mkBucket
+    , Object
+    , mkObject
+    , Region(..)
+    , CredentialSource(..)
     ) where
 
 import           Conduit
@@ -56,7 +77,12 @@ import           Network.Mime                ( MimeType )
 
 import           System.Environment          ( lookupEnv )
 
--- | Perform a transaction using your 'Spaces' client configuration
+-- | Perform a transaction using your 'Spaces' client configuration. Note that
+-- this does /not/ perform any exception handling; if caught at the lower level,
+-- exceptions are generally re-thrown as 'SpacesException's
+--
+-- To run a 'SpacesT' action with arguments in the opposite order, you can use
+-- 'runSpacesT' directly
 runSpaces :: Spaces -> SpacesT m a -> m a
 runSpaces = flip runSpacesT
 
@@ -96,6 +122,28 @@ newSpaces region cs = do
 
     mkKey f = f . C.pack
 
+-- $conv
+-- The following are convenience actions. In most cases, each action is the same
+-- as applying 'runAction' to a type that implements the 'Action' typeclass. For
+-- instance:
+--
+-- > deleteBucket myBucket
+--
+-- is the equivalent of
+--
+-- > runAction DeleteBucket { bucket = myBucket }
+--
+-- All of the underlying instances of 'Action' are exposed and can be imported from
+-- "Network.DO.Spaces.Actions" and its sub-modules. The convenience actions exposed
+-- in the present module attempt to choose sane defaults where applicable.
+--
+-- The only major exception to the above are actions which involve uploading object
+-- data to Spaces. In the case of 'uploadObject', the action converts its 'BodyBS'
+-- argument to a 'Network.HTTP.Client.Types.RequestBodyLBS'. Should you choose to
+-- directly construct 'UploadObject', you must do this manually. 'multipartObject'
+-- is more complicated, and takes care of chunking the request body, sending each
+-- individual request, and completing the multipart request
+--
 -- | Upload an 'Object' within a single request
 uploadObject :: MonadSpaces m
              => Maybe MimeType
