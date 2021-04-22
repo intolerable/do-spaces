@@ -47,6 +47,7 @@ module Network.DO.Spaces.Utils
     , lookupHeader
     , readEtag
     , readContentLen
+    , getResponseMetadata
     ) where
 
 import           Conduit                   ( (.|), runConduit )
@@ -87,7 +88,7 @@ import           Network.DO.Spaces.Types
 import           Network.HTTP.Conduit
                  ( RequestBody(RequestBodyBS, RequestBodyLBS)
                  )
-import           Network.HTTP.Types        ( Header, HeaderName )
+import           Network.HTTP.Types        ( Header, HeaderName, Status )
 
 import           Text.Read                 ( readMaybe )
 import           Text.XML                  ( Node )
@@ -227,8 +228,8 @@ lookupObjectMetadata raw = do
 
     readDate      = MaybeT . return . parseAmzTime . C.unpack
 
-    parseAmzTime  =
-        parseTimeM True defaultTimeLocale "%a, %d %b %Y %H:%M:%S %EZ"
+parseAmzTime :: [Char] -> Maybe UTCTime
+parseAmzTime = parseTimeM True defaultTimeLocale "%a, %d %b %Y %H:%M:%S %EZ"
 
 -- | Lookup the value of a 'HeaderName' from a 'RawResponse' in a monadic context
 lookupHeader :: Monad m => RawResponse m -> HeaderName -> MaybeT m ByteString
@@ -250,3 +251,14 @@ defaultUploadHeaders = UploadHeaders
     , contentEncoding    = Nothing
     , metadata           = mempty
     }
+
+getResponseMetadata
+    :: Monad m => Status -> RawResponse m -> m (Maybe SpacesMetadata)
+getResponseMetadata status raw =
+    runMaybeT $ SpacesMetadata <$> readReqID <*> reqDateP <*> pure status
+  where
+    readReqID = MaybeT . return . eitherToMaybe . T.decodeUtf8'
+        =<< lookupHeader raw "x-amz-request-id"
+
+    reqDateP  =
+        MaybeT . return . parseAmzTime . C.unpack =<< lookupHeader raw "Date"

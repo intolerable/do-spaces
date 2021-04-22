@@ -1,4 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
@@ -65,8 +66,11 @@ import qualified Data.ByteString.Lazy        as LB
 import           Data.Conduit.Binary         ( sinkLbs )
 import           Data.Conduit.List           ( consume )
 import           Data.Foldable               ( asum )
+import           Data.Generics.Product       ( HasField'(field') )
 import qualified Data.Text                   as T
 import           Data.Text                   ( Text )
+
+import           Lens.Micro                  ( (<&>), (^.) )
 
 import           Network.DO.Spaces.Actions
 import           Network.DO.Spaces.Types
@@ -124,14 +128,15 @@ newSpaces region cs = do
 
 -- $conv
 -- The following are convenience actions. In most cases, each action is the same
--- as applying 'runAction' to a type that implements the 'Action' typeclass. For
--- instance:
+-- as applying 'runAction' to a type that implements the 'Action' typeclass.
+-- Information about the response is retained ('SpacesMetadata') in each action.
+-- For instance:
 --
 -- > deleteBucket myBucket
 --
 -- is the equivalent of
 --
--- > runAction DeleteBucket { bucket = myBucket }
+-- > runAction KeepMetadata DeleteBucket { bucket = myBucket }
 --
 -- All of the underlying instances of 'Action' are exposed and can be imported from
 -- "Network.DO.Spaces.Actions" and its sub-modules. The convenience actions exposed
@@ -150,10 +155,11 @@ uploadObject :: MonadSpaces m
              -> Bucket
              -> Object
              -> BodyBS m
-             -> m UploadObjectResponse
+             -> m (SpacesResponse UploadObject)
 uploadObject contentType bucket object rbody = do
     body <- RequestBodyLBS <$> runConduit (rbody .| sinkLbs)
-    runAction UploadObject { optionalHeaders = defaultUploadHeaders, .. }
+    runAction KeepMetadata
+              UploadObject { optionalHeaders = defaultUploadHeaders, .. }
 
 -- | Initiate and complete a 'MultiPart' upload, using default 'UploadHeaders'.
 -- If a 'SpacesException' is thrown while performing the transaction, an attempt
@@ -166,24 +172,26 @@ multipartObject
     -> Object
     -> Int
     -> BodyBS m
-    -> m CompleteMultipartResponse
+    -> m (SpacesResponse CompleteMultipart)
 multipartObject contentType bucket object size body
     | size < 5242880 = throwM
         $ OtherError "multipartObject: Chunk size must be greater than/equal to 5MB"
     | otherwise = do
-        BeginMultipartResponse session <- beginMultipart
+        session <- beginMultipart
+            <&> (^. field' @"consumedResponse" . field' @"session")
         catch @_ @SpacesException (run session) $ \e -> do
-            void . runAction $ CancelMultipart session
+            void . runAction NoMetadata $ CancelMultipart session
             throwM e
   where
     run session = completeMultipart session
         =<< runConduit (body .| inChunks .| putPart session .| consume)
 
-    completeMultipart session tags = runAction
-        $ CompleteMultipart session (zip [ 1 .. ] tags)
-
-    beginMultipart = runAction BeginMultipart
+    beginMultipart = runAction NoMetadata
+                               BeginMultipart
                                { optionalHeaders = defaultUploadHeaders, .. }
+
+    completeMultipart session tags = runAction KeepMetadata
+        $ CompleteMultipart session (zip [ 1 .. ] tags)
 
     putPart session = go 1
       where
@@ -191,10 +199,11 @@ multipartObject contentType bucket object size body
             Nothing -> return ()
             Just v  -> do
                 spaces <- ask
-                UploadPartResponse { etag } <- liftIO
+                etag <- liftIO
                     $ runSpaces spaces
-                                (runAction
+                                (runAction NoMetadata
                                  $ UploadPart session n (RequestBodyLBS v))
+                    <&> (^. field' @"consumedResponse" . field' @"etag")
                 yield etag >> go (n + 1)
 
     inChunks = loop 0 []
@@ -212,12 +221,13 @@ multipartObject contentType bucket object size body
         yieldChunk = yield . LB.fromChunks . reverse
 
 -- | Get information about an 'Object' (does not retrieve the body of the object)
-getObjectInfo :: MonadSpaces m => Bucket -> Object -> m GetObjectInfoResponse
-getObjectInfo bucket object = runAction GetObjectInfo { .. }
+getObjectInfo
+    :: MonadSpaces m => Bucket -> Object -> m (SpacesResponse GetObjectInfo)
+getObjectInfo bucket object = runAction KeepMetadata GetObjectInfo { .. }
 
 -- | Get an 'Object' (retrieves the actual body of the object)
-getObject :: MonadSpaces m => Bucket -> Object -> m GetObjectResponse
-getObject bucket object = runAction GetObject { .. }
+getObject :: MonadSpaces m => Bucket -> Object -> m (SpacesResponse GetObject)
+getObject bucket object = runAction KeepMetadata GetObject { .. }
 
 -- | Copy an 'Object' from one 'Bucket' to another, or replace it
 copyObject :: MonadSpaces m
@@ -227,13 +237,14 @@ copyObject :: MonadSpaces m
            -> Object -- ^ Destination 'Object'
            -> MetadataDirective
            -> Maybe CannedACL
-           -> m CopyObjectResponse
+           -> m (SpacesResponse CopyObject)
 copyObject srcBucket destBucket srcObject destObject metadataDirective acl =
-    runAction CopyObject { .. }
+    runAction KeepMetadata CopyObject { .. }
 
 -- | Delete a single 'Object'
-deleteObject :: MonadSpaces m => Bucket -> Object -> m DeleteObjectResponse
-deleteObject bucket object = runAction DeleteObject { .. }
+deleteObject
+    :: MonadSpaces m => Bucket -> Object -> m (SpacesResponse DeleteObject)
+deleteObject bucket object = runAction KeepMetadata DeleteObject { .. }
 
 -- | Create a new 'Bucket'
 createBucket :: MonadSpaces m
@@ -241,20 +252,21 @@ createBucket :: MonadSpaces m
              -> Maybe Region -- ^ Overrides the 'Region' in your 'Spaces'
                              -- configuration
              -> Maybe CannedACL
-             -> m CreateBucketResponse
-createBucket bucket region acl = runAction CreateBucket { .. }
+             -> m (SpacesResponse CreateBucket)
+createBucket bucket region acl = runAction KeepMetadata CreateBucket { .. }
 
 -- | Delete a 'Bucket'
-deleteBucket :: MonadSpaces m => Bucket -> m DeleteBucketResponse
-deleteBucket bucket = runAction DeleteBucket { .. }
+deleteBucket :: MonadSpaces m => Bucket -> m (SpacesResponse DeleteBucket)
+deleteBucket bucket = runAction KeepMetadata DeleteBucket { .. }
 
 -- | Get the location ('Region') of a 'Bucket'
-getBucketLocation :: MonadSpaces m => Bucket -> m GetBucketLocationResponse
-getBucketLocation bucket = runAction GetBucketLocation { .. }
+getBucketLocation
+    :: MonadSpaces m => Bucket -> m (SpacesResponse GetBucketLocation)
+getBucketLocation bucket = runAction KeepMetadata GetBucketLocation { .. }
 
 -- | List every 'Bucket' associated with your Spaces account
-listAllBuckets :: MonadSpaces m => m ListAllBucketsResponse
-listAllBuckets = runAction ListAllBuckets
+listAllBuckets :: MonadSpaces m => m (SpacesResponse ListAllBuckets)
+listAllBuckets = runAction KeepMetadata ListAllBuckets
 
 -- | List the 'Object's of a 'Bucket'
 listBucket :: MonadSpaces m
@@ -263,7 +275,6 @@ listBucket :: MonadSpaces m
            -> Maybe Object -- ^ Marker
            -> Maybe Int -- ^ Maximum keys
            -> Maybe Text -- ^ Prefix used to group object keys
-           -> m ListBucketResponse
+           -> m (SpacesResponse ListBucket)
 listBucket bucket delimiter marker maxKeys prefix =
-    runAction ListBucket { .. }
-
+    runAction KeepMetadata ListBucket { .. }

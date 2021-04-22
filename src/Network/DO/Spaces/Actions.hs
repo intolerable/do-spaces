@@ -62,9 +62,12 @@ import           Network.DO.Spaces.Types
                  , ClientException(HTTPStatus)
                  , MonadSpaces
                  , RawResponse(..)
+                 , SpacesResponse(..)
+                 , WithMetadata(NoMetadata, KeepMetadata)
                  )
 import           Network.DO.Spaces.Utils
-                 ( handleMaybe
+                 ( getResponseMetadata
+                 , handleMaybe
                  , xmlDocCursor
                  , xmlElemError
                  )
@@ -76,12 +79,16 @@ import           Network.HTTP.Types                          ( Status )
 import qualified Text.XML.Cursor                             as X
 import           Text.XML.Cursor                             ( ($/), (&/) )
 
--- | Run an instance of 'Action', receiving a 'ConsumedResponse'
-runAction
-    :: forall a m. (MonadSpaces m, Action m a) => a -> m (ConsumedResponse a)
-runAction action = do
+-- | Run an instance of 'Action', receiving a 'ConsumedResponse'. The retention
+-- of 'SpacesMetadata' can be controlled by passing a 'WithMetadata' constructor
+runAction :: forall a m.
+          (MonadSpaces m, Action m a)
+          => WithMetadata
+          -> a
+          -> m (SpacesResponse a)
+runAction withMD action = do
     now <- liftIO getCurrentTime
-    reqBuilder <- buildRequest @_ @a action
+    reqBuilder <- buildRequest action
     req <- newSpacesRequest reqBuilder now
     let stringToSign = mkStringToSign req
         auth         = mkAuthorization req stringToSign
@@ -99,7 +106,11 @@ runAction action = do
                 Nothing     -> throwM . HTTPStatus status
                     =<< runConduit (body .| sinkLbs)
 
-        consumeResponse @_ @a raw
+        consumedResponse <- consumeResponse @_ @a raw
+        metadata <- case withMD of
+            NoMetadata   -> return Nothing
+            KeepMetadata -> getResponseMetadata status raw
+        return SpacesResponse { .. }
 
 parseErrorResponse
     :: (MonadThrow m, MonadIO m) => Status -> RawResponse m -> m APIException
@@ -112,3 +123,4 @@ parseErrorResponse status raw = do
     hostID <- X.force (xmlElemError "HostId")
         $ cursor $/ X.laxElement "HostId" &/ X.content
     return APIException { .. }
+

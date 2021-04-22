@@ -443,3 +443,6 @@ instance Exception APIException where
     toException = spsExToException
 
     fromException = spsExFromException
+
+data A a = A { b :: a }
+    deriving ( Show, Eq, Generic, Typeable )
