@@ -14,10 +14,11 @@ extra-source-files:
   README.org
   CHANGELOG.org
   tests/data/*.xml
+  io-tests/creds.conf.skel
 
 source-repository head
   type:     git
-  location: https://gitlab.com/ngua/ipa-hs
+  location: https://gitlab.com/ngua/do-spaces.git
 
 common common-options
   ghc-options:
@@ -26,6 +27,10 @@ common common-options
 
 common common-extensions
   default-extensions: OverloadedStrings
+
+flag test-io
+  description: Run the full IO tests (requires Spaces subscription)
+  default:     False
 
 library
   import:           common-options, common-extensions
@@ -95,6 +100,22 @@ test-suite tests
     , resourcet         ^>=1.2
     , text              ^>=1.2
     , time              >=1.8   && <1.12
+
+  main-is:          Main.hs
+  default-language: Haskell2010
+
+test-suite io-tests
+  import:           common-options, common-extensions
+
+  if !flag(test-io)
+    buildable: False
+
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   io-tests
+  build-depends:
+    , base       >=4.13 && <5
+    , do-spaces
+    , hspec      >=2.0  && <3.0
 
   main-is:          Main.hs
   default-language: Haskell2010
