@@ -32,6 +32,7 @@ module Network.DO.Spaces.Types
       -- * Requests and responses
     , SpacesRequest(..)
     , SpacesRequestBuilder(..)
+    , SpacesMetadata(..)
     , RawResponse(..)
     , Method(..)
     , Region(..)
@@ -68,6 +69,8 @@ module Network.DO.Spaces.Types
     , ClientException(..)
     , SpacesException(..)
     , APIException(..)
+    , SpacesResponse(..)
+    , WithMetadata(..)
     ) where
 
 import           Conduit                     ( ConduitT, MonadUnliftIO )
@@ -335,11 +338,11 @@ uncompute = \case
     Credentials b   -> b
     Authorization b -> b
 
--- | DO Spaces access key
+-- | Spaces access key
 newtype AccessKey = AccessKey { unAccessKey :: ByteString }
     deriving ( Show, Eq, Generic )
 
--- | DO Spaces secret key
+-- | Spaces secret key
 newtype SecretKey = SecretKey { unSecretKey :: ByteString }
     deriving ( Show, Eq, Generic )
 
@@ -351,11 +354,36 @@ class Monad m => Action m a where
     buildRequest :: a -> m SpacesRequestBuilder
     consumeResponse :: RawResponse m -> m (ConsumedResponse a)
 
+-- A response, before being transformed into a 'ConsumedResponse'
 data RawResponse m = RawResponse { headers :: [Header], body :: BodyBS m }
     deriving ( Generic )
 
 -- | A request or response body
 type BodyBS m = ConduitT () ByteString m ()
+
+-- | Metadata and other response information returned from each Spaces API
+-- transaction; it can be helpful to retain this at times
+data SpacesMetadata = SpacesMetadata
+    { requestID :: RequestID -- ^ Unique ID assigned to your request
+    , date      :: UTCTime
+    , status    :: Status -- ^ HTTP status
+    }
+    deriving ( Show, Eq, Generic )
+
+-- | Whether or not to retain 'SpacesMetadata' when consuming responses
+data WithMetadata = KeepMetadata | NoMetadata
+
+data SpacesResponse a = SpacesResponse
+    { consumedResponse :: ConsumedResponse a
+      -- ^ A 'Response' consumed by an 'Action' instance
+    , metadata         :: Maybe SpacesMetadata
+      -- ^ 'SpacesMetadata', the retention of which can be controlled using
+      -- 'WithMetadata'
+    }
+    deriving ( Generic )
+
+-- | A unique ID that is assigned to each request
+type RequestID = Text
 
 -- How to discover 'AccessKey's and 'SecretKey's when creating a new
 -- 'Spaces' object
@@ -391,6 +419,8 @@ data ClientException
     = InvalidRequest Text
     | InvalidXML Text
     | MissingKeys Text
+      -- | This includes the raw 'Response' body, read into a
+      -- lazy 'LB.ByteString'
     | HTTPStatus Status LB.ByteString
     | OtherError Text
     deriving ( Show, Eq, Generic, Typeable )
@@ -400,11 +430,11 @@ instance Exception ClientException where
 
     fromException = spsExFromException
 
--- | An XML-formatted, s3-compatible API error response
+-- | An s3-compatible API error response, sent as XML
 data APIException = APIException
     { status    :: Status -- ^ HTTP 'Status'
     , code      :: Text -- ^ The s3 error code type
-    , requestID :: Text -- ^ The unique ID of the request
+    , requestID :: RequestID -- ^ The unique ID of the request
     , hostID    :: Text
     }
     deriving ( Show, Eq, Generic, Typeable )
