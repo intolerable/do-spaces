@@ -177,8 +177,7 @@ multipartObject contentType bucket object size body
     | size < 5242880 = throwM
         $ OtherError "multipartObject: Chunk size must be greater than/equal to 5MB"
     | otherwise = do
-        session <- beginMultipart
-            <&> (^. field' @"consumedResponse" . field' @"session")
+        session <- beginMultipart <&> (^. field' @"value" . field' @"session")
         catch @_ @SpacesException (run session) $ \e -> do
             void . runAction NoMetadata $ CancelMultipart session
             throwM e
@@ -203,7 +202,7 @@ multipartObject contentType bucket object size body
                     $ runSpaces spaces
                                 (runAction NoMetadata
                                  $ UploadPart session n (RequestBodyLBS v))
-                    <&> (^. field' @"consumedResponse" . field' @"etag")
+                    <&> (^. field' @"value" . field' @"etag")
                 yield etag >> go (n + 1)
 
     inChunks = loop 0 []

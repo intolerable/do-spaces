@@ -372,11 +372,13 @@ data SpacesMetadata = SpacesMetadata
 
 -- | Whether or not to retain 'SpacesMetadata' when consuming responses
 data WithMetadata = KeepMetadata | NoMetadata
+    deriving ( Show, Eq, Generic )
 
+-- | A 'ConsumedResponse' with optional 'SpacesMetadata'
 data SpacesResponse a = SpacesResponse
-    { consumedResponse :: ConsumedResponse a
+    { value    :: ConsumedResponse a
       -- ^ A 'Response' consumed by an 'Action' instance
-    , metadata         :: Maybe SpacesMetadata
+    , metadata :: Maybe SpacesMetadata
       -- ^ 'SpacesMetadata', the retention of which can be controlled using
       -- 'WithMetadata'
     }
@@ -443,6 +445,3 @@ instance Exception APIException where
     toException = spsExToException
 
     fromException = spsExFromException
-
-data A a = A { b :: a }
-    deriving ( Show, Eq, Generic, Typeable )

@@ -106,7 +106,7 @@ runAction withMD action = do
                 Nothing     -> throwM . HTTPStatus status
                     =<< runConduit (body .| sinkLbs)
 
-        consumedResponse <- consumeResponse @_ @a raw
+        value <- consumeResponse @_ @a raw
         metadata <- case withMD of
             NoMetadata   -> return Nothing
             KeepMetadata -> getResponseMetadata status raw
