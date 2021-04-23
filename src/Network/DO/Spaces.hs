@@ -2,7 +2,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeApplications #-}
 
@@ -39,11 +38,14 @@ module Network.DO.Spaces
     , listAllBuckets
     , listBucket
       -- * Type re-exports
+    , Spaces
     , Bucket
     , mkBucket
     , Object
     , mkObject
     , Region(..)
+    , AccessKey(..)
+    , SecretKey(..)
     , CredentialSource(..)
     ) where
 
