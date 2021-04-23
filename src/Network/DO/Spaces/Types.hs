@@ -4,13 +4,17 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE StrictData #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 -- |
 -- Module      : Network.DO.Spaces.Types
@@ -73,32 +77,33 @@ module Network.DO.Spaces.Types
     , WithMetadata(..)
     ) where
 
-import           Conduit                     ( ConduitT, MonadUnliftIO )
+import           Conduit                      ( ConduitT, MonadUnliftIO )
 
 import           Control.Exception
                  ( Exception(toException, fromException)
                  , SomeException
                  )
-import           Control.Monad.Catch         ( MonadCatch
-                                             , MonadThrow(throwM)
-                                             )
-import           Control.Monad.IO.Class      ( MonadIO )
-import           Control.Monad.Reader        ( MonadReader
-                                             , ReaderT(ReaderT, runReaderT)
-                                             )
+import           Control.Monad.Catch          ( MonadCatch
+                                              , MonadThrow(throwM)
+                                              )
+import           Control.Monad.IO.Class       ( MonadIO )
+import           Control.Monad.Reader         ( MonadReader
+                                              , ReaderT(ReaderT, runReaderT)
+                                              )
 
-import           Data.ByteString             ( ByteString )
-import qualified Data.ByteString.Lazy        as LB
-import           Data.Char                   ( isAlpha, isDigit, toLower )
-import           Data.Data                   ( Typeable )
-import           Data.Ix                     ( inRange )
-import           Data.Kind                   ( Type )
-import           Data.Text                   ( Text )
-import qualified Data.Text                   as T
-import           Data.Time                   ( UTCTime )
-import           Data.Typeable               ( cast )
+import           Data.ByteString              ( ByteString )
+import qualified Data.ByteString.Lazy         as LB
+import           Data.Char                    ( isAlpha, isDigit, toLower )
+import           Data.Data                    ( Typeable )
+import qualified Data.Generics.Product.Fields as GL
+import           Data.Ix                      ( inRange )
+import           Data.Kind                    ( Type )
+import           Data.Text                    ( Text )
+import qualified Data.Text                    as T
+import           Data.Time                    ( UTCTime )
+import           Data.Typeable                ( cast )
 
-import           GHC.Generics                ( Generic )
+import           GHC.Generics                 ( Generic )
 
 import           Network.HTTP.Client.Conduit
                  ( HasHttpManager(..)
@@ -106,9 +111,9 @@ import           Network.HTTP.Client.Conduit
                  , Request
                  , RequestBody
                  )
-import           Network.HTTP.Types          ( Header, Query )
-import           Network.HTTP.Types.Status   ( Status )
-import           Network.Mime                ( MimeType )
+import           Network.HTTP.Types           ( Header, Query )
+import           Network.HTTP.Types.Status    ( Status )
+import           Network.Mime                 ( MimeType )
 
 newtype SpacesT m a = SpacesT (ReaderT Spaces m a)
     deriving ( Generic, Functor, Applicative, Monad, MonadIO, MonadThrow
@@ -364,7 +369,9 @@ type BodyBS m = ConduitT () ByteString m ()
 -- | Metadata and other response information returned from each Spaces API
 -- transaction; it can be helpful to retain this at times
 data SpacesMetadata = SpacesMetadata
-    { requestID :: RequestID -- ^ Unique ID assigned to your request
+    { requestID :: Maybe RequestID
+      -- ^ Unique ID assigned to your request. This is not included in all
+      -- responses
     , date      :: UTCTime
     , status    :: Status -- ^ HTTP status
     }
@@ -383,6 +390,17 @@ data SpacesResponse a = SpacesResponse
       -- 'WithMetadata'
     }
     deriving ( Generic )
+
+deriving instance (Show (ConsumedResponse a)) => Show (SpacesResponse a)
+
+-- This instance is necessary to make the polymorphic @value@ field work with
+-- HasField
+instance {-# OVERLAPPING #-}( GL.HasField' name (SpacesResponse a) x
+                            , x ~ y
+                            , a ~ b
+                            )
+    => GL.HasField name (SpacesResponse a) (SpacesResponse b) x y where
+    field = GL.field' @name
 
 -- | A unique ID that is assigned to each request
 type RequestID = Text
