@@ -1,7 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
@@ -21,7 +20,6 @@ module Network.DO.Spaces.Actions.GetBucketLocation
     , GetBucketLocationResponse(..)
     ) where
 
-import           Control.Monad.Catch     ( MonadThrow(throwM) )
 import           Control.Monad.Reader    ( MonadReader(ask) )
 
 import           Data.ByteString         ( ByteString )
@@ -32,12 +30,14 @@ import           GHC.Generics            ( Generic )
 import           Network.DO.Spaces.Types
                  ( Action(..)
                  , Bucket
-                 , ClientException(InvalidXML)
                  , MonadSpaces
                  , Region(..)
                  , SpacesRequestBuilder(..)
                  )
-import           Network.DO.Spaces.Utils ( quote, xmlElemError, xmlDocCursor )
+import           Network.DO.Spaces.Utils ( slugToRegion
+                                         , xmlDocCursor
+                                         , xmlElemError
+                                         )
 import qualified Network.HTTP.Types      as H
 
 import qualified Text.XML.Cursor         as X
@@ -82,12 +82,3 @@ instance MonadSpaces m => Action m GetBucketLocation where
             <$> (X.forceM (xmlElemError "LocationConstraint")
                  $ cursor $.// X.laxElement "LocationConstraint" &/ X.content
                  &| slugToRegion . T.strip)
-      where
-        slugToRegion = \case
-            "nyc3" -> return NewYork
-            "ams3" -> return Amsterdam
-            "sfo3" -> return SanFrancisco
-            "sgp1" -> return Singapore
-            "fra1" -> return Frankfurt
-            reg    -> throwM . InvalidXML
-                $ "GetBucketLocation: unrecognized region " <> quote reg

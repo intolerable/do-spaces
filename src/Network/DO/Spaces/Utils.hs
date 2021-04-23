@@ -48,6 +48,7 @@ module Network.DO.Spaces.Utils
     , readEtag
     , readContentLen
     , getResponseMetadata
+    , slugToRegion
     ) where
 
 import           Conduit                   ( (.|), runConduit )
@@ -105,6 +106,15 @@ regionSlug = \case
     SanFrancisco -> "sfo3"
     Singapore    -> "sgp1"
     Frankfurt    -> "fra1"
+
+slugToRegion :: MonadThrow m => Text -> m Region
+slugToRegion = \case
+    "nyc3" -> return NewYork
+    "ams3" -> return Amsterdam
+    "sfo3" -> return SanFrancisco
+    "sgp1" -> return Singapore
+    "fra1" -> return Frankfurt
+    reg    -> throwM . OtherError $ "Unrecognized region " <> quote reg
 
 -- | Map 'ByteString' chars to lower-case
 toLowerBS :: ByteString -> ByteString
@@ -252,10 +262,18 @@ defaultUploadHeaders = UploadHeaders
     , metadata           = mempty
     }
 
+-- | Create a 'SpacesMetadata' by reading response 'Header's, after passing the
+-- 'Status'
 getResponseMetadata
     :: Monad m => Status -> RawResponse m -> m (Maybe SpacesMetadata)
-getResponseMetadata status raw =
-    runMaybeT $ SpacesMetadata <$> readReqID <*> reqDateP <*> pure status
+getResponseMetadata status raw = do
+    -- TODO Find a cleaner way to do this. The current design around MaybeT can
+    -- be attributed to a mistaken belief that the 'x-amz-request-id' would always
+    -- be present (it's not)
+    requestID <- runMaybeT readReqID
+    runMaybeT reqDateP >>= \case
+        Just date -> return $ Just SpacesMetadata { .. }
+        Nothing   -> return Nothing
   where
     readReqID = MaybeT . return . eitherToMaybe . T.decodeUtf8'
         =<< lookupHeader raw "x-amz-request-id"
