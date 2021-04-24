@@ -395,11 +395,11 @@ deriving instance (Show (ConsumedResponse a)) => Show (SpacesResponse a)
 
 -- This instance is necessary to make the polymorphic @value@ field work with
 -- HasField
-instance {-# OVERLAPPING #-}( GL.HasField' name (SpacesResponse a) x
-                            , x ~ y
+instance {-# OVERLAPPING #-}( GL.HasField' name (SpacesResponse a) s
+                            , s ~ t
                             , a ~ b
                             )
-    => GL.HasField name (SpacesResponse a) (SpacesResponse b) x y where
+    => GL.HasField name (SpacesResponse a) (SpacesResponse b) s t where
     field = GL.field' @name
 
 -- | A unique ID that is assigned to each request

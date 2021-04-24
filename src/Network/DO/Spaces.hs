@@ -47,6 +47,9 @@ module Network.DO.Spaces
     , AccessKey(..)
     , SecretKey(..)
     , CredentialSource(..)
+    , SpacesException(..)
+    , ClientException(..)
+    , APIException(..)
     ) where
 
 import           Conduit
