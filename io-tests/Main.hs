@@ -1,10 +1,33 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-
 {-# LANGUAGE TypeApplications #-}
 
 -- |
+-- WARNING
+-- Run at your own risk!
+--
+-- Running the tests in this module requires an active Digital Ocean spaces
+-- subscription, and may incur any of the following:
+--
+--      * charges billed to your DO account
+--      * the application of rate-limiting or other limits to your account
+--      * overage in data transfer or concurrent active spaces, resulting in
+--        charges or penalties
+--      * the creation of extraneous spaces/buckets in your subscription
+--      * data loss or corruption
+--
+-- To run:
+--      * copy ./creds.conf.skel to ./creds.conf
+--      * replace the dummy values with your active Spaces access and
+--        secret keys and a region slug
+--      * do not add any additional fields, whitespace, quotes, etc... or
+--        parsing the credentials file will fail
+--      * run @cabal test@ with @-f test-io@
+--
+-- The tests will create buckets and attempt to delete them. In the event
+-- that bucket deletion fails, you will have to clean them up manually
+--
 module Main where
 
 import           Conduit
@@ -54,7 +77,7 @@ bucketCrud = do
                 `shouldBe` Just 200
             (created ^. #value) `shouldBe` ()
 
-            !location <- retry404 20 . runSpaces sp $ getBucketLocation bucket
+            location <- retry404 20 . runSpaces sp $ getBucketLocation bucket
             (location ^? #metadata . _Just . #status . to H.statusCode)
                 `shouldBe` Just 200
             (location ^. #value . #locationConstraint)
@@ -84,8 +107,7 @@ retry404 maxRetries action = loop 0
 
 -- Makes a Bucket by appending the current epoch time to a base name; this
 -- provides some mechanism to avoid name clashes when creating new buckets,
--- which must be unique within regions, at least according to the s3 spec
--- from Amazon
+-- which must be unique across all users within a given region
 epochBucket :: IO Bucket
 epochBucket =
     mkBucket . ("do-spaces-test-" <>) . T.pack . show @Integer . round
