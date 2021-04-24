@@ -20,13 +20,18 @@
 -- To run:
 --      * copy ./creds.conf.skel to ./creds.conf
 --      * replace the dummy values with your active Spaces access and
---        secret keys and a region slug
+--        secret keys, a region slug, and the name of an existing bucket
+--        to use for certain object CRUD operations
 --      * do not add any additional fields, whitespace, quotes, etc... or
 --        parsing the credentials file will fail
 --      * run @cabal test@ with @-f test-io@
 --
 -- The tests will create buckets and attempt to delete them. In the event
--- that bucket deletion fails, you will have to clean them up manually
+-- that bucket deletion fails, you will have to clean them up manually.
+-- Similarly, the default bucket provided in the "bucket" field of the
+-- credentials file will be used to test certain object CRUD functionality.
+-- Although the tests will attempt to delete any objects created, you may
+-- need to delete them manually if this fails
 --
 module Main where
 
@@ -66,24 +71,25 @@ main = bucketCrud
 
 bucketCrud :: IO ()
 bucketCrud = do
-    sp <- readConf
+    (_, spaces) <- readConf
     !bucket <- epochBucket
     hspec
         . context "Network.DO.Spaces.Actions Bucket CRUD"
         . it "creates, reads, and deletes a new bucket"
         $ do
-            created <- runSpaces sp $ createBucket bucket Nothing Nothing
+            created <- runSpaces spaces $ createBucket bucket Nothing Nothing
             (created ^? #metadata . _Just . #status . to H.statusCode)
                 `shouldBe` Just 200
             (created ^. #value) `shouldBe` ()
 
-            location <- retry404 20 . runSpaces sp $ getBucketLocation bucket
+            location
+                <- retry404 20 . runSpaces spaces $ getBucketLocation bucket
             (location ^? #metadata . _Just . #status . to H.statusCode)
                 `shouldBe` Just 200
             (location ^. #value . #locationConstraint)
-                `shouldBe` (sp ^. #region)
+                `shouldBe` (spaces ^. #region)
 
-            deleted <- retry404 20 . runSpaces sp $ deleteBucket bucket
+            deleted <- retry404 20 . runSpaces spaces $ deleteBucket bucket
             (deleted ^? #metadata . _Just . #status . to H.statusCode)
                 `shouldBe` Just 204
             (deleted ^. #value) `shouldBe` ()
@@ -113,22 +119,24 @@ epochBucket =
     mkBucket . ("do-spaces-test-" <>) . T.pack . show @Integer . round
     =<< getPOSIXTime
 
-readConf :: IO Spaces
+readConf :: IO (Bucket, Spaces)
 readConf = do
     contents <- runConduitRes
         $ sourceFile "./io-tests/creds.conf" .| CB.lines .| sinkList
     case contents of
-        [ a, s, r ] -> do
+        [ a, s, r, b ] -> do
             let access = coerce $ getVal a
                 secret = coerce $ getVal s
             region <- slugToRegion . T.decodeUtf8 $ getVal r
-            newSpaces region (Explicit access secret)
-        _           -> throwIO . userError
+            bucket <- mkBucket $ T.decodeUtf8 b
+            spaces <- newSpaces region (Explicit access secret)
+            return (bucket, spaces)
+        _              -> throwIO . userError
             $ mconcat [ "io-tests: Credentials must consist of "
-                      , "exactly three lines, in the order "
-                      , "'access', 'secret', 'region', "
+                      , "exactly four lines, in the order "
+                      , "'access', 'secret', 'region', 'bucket'"
                       , "with each key separated from its "
-                      , "value with '='. "
+                      , "value with '=', without whitespace "
                       , "See ./creds.conf.skel"
                       ]
   where
