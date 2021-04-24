@@ -74,11 +74,11 @@ instance MonadSpaces m => Action m ListAllBuckets where
         cursor <- xmlDocCursor raw
         owner <- X.forceM (xmlElemError "Owner")
             $ cursor $/ X.laxElement "Owner" &| ownerP
-        buckets <- S.fromList
-            <$> (sequence $ cursor $/ X.laxElement "Buckets" &| bucketsP)
-        return ListAllBucketsResponse { .. }
+        bs <- X.force (xmlElemError "Buckets")
+            $ cursor $/ X.laxElement "Buckets" &| bucketsP
+        return ListAllBucketsResponse { buckets = S.fromList bs, .. }
       where
-        bucketsP c = X.forceM (xmlElemError "Bucket")
+        bucketsP c = X.forceM (xmlElemError "Bucket") . sequence
             $ c $/ X.laxElement "Bucket" &| bucketInfoP
 
         bucketInfoP c = do
