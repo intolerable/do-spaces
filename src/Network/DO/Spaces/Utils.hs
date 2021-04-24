@@ -264,19 +264,10 @@ defaultUploadHeaders = UploadHeaders
 
 -- | Create a 'SpacesMetadata' by reading response 'Header's, after passing the
 -- 'Status'
-getResponseMetadata
-    :: Monad m => Status -> RawResponse m -> m (Maybe SpacesMetadata)
-getResponseMetadata status raw = do
-    -- TODO Find a cleaner way to do this. The current design around MaybeT can
-    -- be attributed to a mistaken belief that the 'x-amz-request-id' would always
-    -- be present (it's not)
-    requestID <- runMaybeT readReqID
-    runMaybeT reqDateP >>= \case
-        Just date -> return $ Just SpacesMetadata { .. }
-        Nothing   -> return Nothing
+getResponseMetadata :: Status -> RawResponse m -> SpacesMetadata
+getResponseMetadata status RawResponse { .. } = SpacesMetadata { .. }
   where
-    readReqID = MaybeT . return . eitherToMaybe . T.decodeUtf8'
-        =<< lookupHeader raw "x-amz-request-id"
+    requestID =
+        eitherToMaybe . T.decodeUtf8' =<< lookup "x-amz-request-id" headers
 
-    reqDateP  =
-        MaybeT . return . parseAmzTime . C.unpack =<< lookupHeader raw "Date"
+    date      = parseAmzTime . C.unpack =<< lookup "Date" headers

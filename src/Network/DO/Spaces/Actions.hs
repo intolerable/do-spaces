@@ -95,10 +95,13 @@ runAction withMD action = do
         finalized    = finalize req auth
 
     withResponse @_ @m finalized $ \resp -> do
-        let status  = resp & H.responseStatus
-            body    = resp & H.responseBody
-            headers = resp & H.responseHeaders
-            raw     = RawResponse { .. }
+        let status   = resp & H.responseStatus
+            body     = resp & H.responseBody
+            headers  = resp & H.responseHeaders
+            metadata = case withMD of
+                NoMetadata   -> Nothing
+                KeepMetadata -> Just $ getResponseMetadata status raw
+            raw      = RawResponse { .. }
 
         when ((status & H.statusCode) >= 300)
             $ handleMaybe (parseErrorResponse status) raw >>= \case
@@ -107,9 +110,6 @@ runAction withMD action = do
                     =<< runConduit (body .| sinkLbs)
 
         value <- consumeResponse @_ @a raw
-        metadata <- case withMD of
-            NoMetadata   -> return Nothing
-            KeepMetadata -> getResponseMetadata status raw
         return SpacesResponse { .. }
 
 parseErrorResponse

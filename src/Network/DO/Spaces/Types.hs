@@ -372,7 +372,7 @@ data SpacesMetadata = SpacesMetadata
     { requestID :: Maybe RequestID
       -- ^ Unique ID assigned to your request. This is not included in all
       -- responses
-    , date      :: UTCTime
+    , date      :: Maybe UTCTime
     , status    :: Status -- ^ HTTP status
     }
     deriving ( Show, Eq, Generic )
