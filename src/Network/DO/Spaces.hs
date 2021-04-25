@@ -30,6 +30,8 @@ module Network.DO.Spaces
     , getObject
     , getObjectInfo
     , copyObject
+    , copyObjectWithin
+    , overwriteObject
     , deleteObject
       -- ** Bucket operations
     , createBucket
@@ -37,8 +39,10 @@ module Network.DO.Spaces
     , getBucketLocation
     , listAllBuckets
     , listBucket
+    , listBucketGrouped
       -- * Type re-exports
     , Spaces
+    , SpacesResponse
     , Bucket
     , mkBucket
     , Object
@@ -50,6 +54,7 @@ module Network.DO.Spaces
     , SpacesException(..)
     , ClientException(..)
     , APIException(..)
+    , listBucketRec
     ) where
 
 import           Conduit
@@ -71,7 +76,8 @@ import qualified Data.ByteString.Lazy        as LB
 import           Data.Conduit.Binary         ( sinkLbs )
 import           Data.Conduit.List           ( consume )
 import           Data.Foldable               ( asum )
-import           Data.Generics.Product       ( HasField'(field') )
+import           Data.Generics.Product       ( HasField(field) )
+import           Data.Sequence               ( Seq(Empty) )
 import qualified Data.Text                   as T
 import           Data.Text                   ( Text )
 
@@ -149,10 +155,10 @@ newSpaces region cs = do
 --
 -- The only major exception to the above are actions which involve uploading object
 -- data to Spaces. In the case of 'uploadObject', the action converts its 'BodyBS'
--- argument to a 'Network.HTTP.Client.Types.RequestBodyLBS'. Should you choose to
--- directly construct 'UploadObject', you must do this manually. 'multipartObject'
--- is more complicated, and takes care of chunking the request body, sending each
--- individual request, and completing the multipart request
+-- argument to a 'RequestBodyLBS'. Should you choose to directly construct
+-- 'UploadObject', you must do this manually. 'multipartObject' is more complicated,
+-- and takes care of chunking the request body, sending each individual request,
+-- and completing the multipart request
 --
 -- | Upload an 'Object' within a single request
 uploadObject :: MonadSpaces m
@@ -180,9 +186,9 @@ multipartObject
     -> m (SpacesResponse CompleteMultipart)
 multipartObject contentType bucket object size body
     | size < 5242880 = throwM
-        $ OtherError "multipartObject: Chunk size must be greater than/equal to 5MB"
+        $ InvalidRequest "multipartObject: Chunk size must be greater than/equal to 5MB"
     | otherwise = do
-        session <- beginMultipart <&> (^. field' @"value" . field' @"session")
+        session <- beginMultipart <&> (^. field @"value" . field @"session")
         catch @_ @SpacesException (run session) $ \e -> do
             void . runAction NoMetadata $ CancelMultipart session
             throwM e
@@ -207,7 +213,7 @@ multipartObject contentType bucket object size body
                     $ runSpaces spaces
                                 (runAction NoMetadata
                                  $ UploadPart session n (RequestBodyLBS v))
-                    <&> (^. field' @"value" . field' @"etag")
+                    <&> (^. field @"value" . field @"etag")
                 yield etag >> go (n + 1)
 
     inChunks = loop 0 []
@@ -233,17 +239,54 @@ getObjectInfo bucket object = runAction KeepMetadata GetObjectInfo { .. }
 getObject :: MonadSpaces m => Bucket -> Object -> m (SpacesResponse GetObject)
 getObject bucket object = runAction KeepMetadata GetObject { .. }
 
--- | Copy an 'Object' from one 'Bucket' to another, or replace it
+-- | Copy an 'Object' from one 'Bucket' to another; this chooses a number of
+-- defaults to represent the most common cases and avoid a preponderance of
+-- parameters. 'Object's are copied using default ACLs with the COPY metadata
+-- directive.
+--
+-- If you'd like to use a specfic 'CannedACL' or 'MetadataDirective', use
+-- 'CopyObject' directly with 'runAction'
 copyObject :: MonadSpaces m
            => Bucket -- ^ Source 'Bucket'
            -> Bucket -- ^ Destination 'Bucket'
            -> Object -- ^ Source 'Object'
            -> Object -- ^ Destination 'Object'
-           -> MetadataDirective
-           -> Maybe CannedACL
            -> m (SpacesResponse CopyObject)
-copyObject srcBucket destBucket srcObject destObject metadataDirective acl =
+copyObject srcBucket destBucket srcObject destObject =
     runAction KeepMetadata CopyObject { .. }
+  where
+    acl               = Nothing
+
+    metadataDirective = Copy
+
+-- | Copy an 'Object' within the same 'Bucket', using defaults for the
+-- 'MetadataDirective' and 'CannedACL'
+copyObjectWithin :: MonadSpaces m
+                 => Bucket
+                 -> Object -- ^ Source 'Object'
+                 -> Object -- ^ Destination 'Object'
+                 -> m (SpacesResponse CopyObject)
+copyObjectWithin srcBucket srcObject destObject =
+    runAction KeepMetadata CopyObject { .. }
+  where
+    acl               = Nothing
+
+    metadataDirective = Copy
+
+    destBucket        = srcBucket
+
+-- | Copy an 'Object' to itself, overwriting its associated metadata
+overwriteObject
+    :: MonadSpaces m => Bucket -> Object -> m (SpacesResponse CopyObject)
+overwriteObject srcBucket srcObject = runAction KeepMetadata CopyObject { .. }
+  where
+    acl               = Nothing
+
+    metadataDirective = Copy
+
+    destBucket        = srcBucket
+
+    destObject        = srcObject
 
 -- | Delete a single 'Object'
 deleteObject
@@ -272,13 +315,50 @@ getBucketLocation bucket = runAction KeepMetadata GetBucketLocation { .. }
 listAllBuckets :: MonadSpaces m => m (SpacesResponse ListAllBuckets)
 listAllBuckets = runAction KeepMetadata ListAllBuckets
 
--- | List the 'Object's of a 'Bucket'
-listBucket :: MonadSpaces m
-           => Bucket
-           -> Maybe Char -- ^ Delimiter
-           -> Maybe Object -- ^ Marker
-           -> Maybe Int -- ^ Maximum keys
-           -> Maybe Text -- ^ Prefix used to group object keys
-           -> m (SpacesResponse ListBucket)
-listBucket bucket delimiter marker maxKeys prefix =
-    runAction KeepMetadata ListBucket { .. }
+-- | List the 'Object's of a 'Bucket', without grouping, delimiting, or limiting
+-- the keys (i.e. list all 'Objects' non-hierarchically, up to the Spaces limit)
+listBucket :: MonadSpaces m => Bucket -> m (SpacesResponse ListBucket)
+listBucket bucket = runAction KeepMetadata ListBucket { .. }
+  where
+    delimiter = Nothing
+
+    marker    = Nothing
+
+    maxKeys   = Nothing
+
+    prefix    = Nothing
+
+-- | List the 'Object's of a 'Bucket', using a delimiter and prefix to group
+-- objects. For example @\/@ can be used as a delimiter to treat objects as
+-- directories within the bucket, which can further be combined with a text
+-- prefix
+listBucketGrouped :: MonadSpaces m
+                  => Bucket
+                  -> Char -- ^ Delimiter
+                  -> Text -- ^ Prefix used to group object keys
+                  -> m (SpacesResponse ListBucket)
+listBucketGrouped bucket delimiter prefix =
+    runAction KeepMetadata
+              ListBucket
+              { delimiter = Just delimiter, prefix = Just prefix, .. }
+  where
+    maxKeys = Nothing
+
+    marker  = Nothing
+
+listBucketRec :: MonadSpaces m => Bucket -> m (Seq ObjectInfo)
+listBucketRec bucket = go Empty Nothing
+  where
+    go os marker = do
+        r <- runAction NoMetadata
+            $ ListBucket
+            { delimiter = Nothing, maxKeys = Nothing, prefix = Nothing, .. }
+        let v           = r ^. field @"value"
+            isTruncated = v ^. field @"isTruncated"
+            objects     = v ^. field @"objects"
+            nextMarker  = v ^. field @"nextMarker"
+        case nextMarker of
+            Just _
+                | isTruncated -> go (os <> objects) nextMarker
+                | otherwise -> return $ os <> objects
+            Nothing -> return $ os <> objects
