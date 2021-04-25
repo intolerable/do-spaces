@@ -61,6 +61,7 @@ instance MonadSpaces m => Action m GetObject where
                , method         = Nothing
                , body           = Nothing
                , queryString    = Nothing
+               , subresources   = Nothing
                , overrideRegion = Nothing
                , headers        = mempty
                , ..

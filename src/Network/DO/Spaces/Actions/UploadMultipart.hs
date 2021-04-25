@@ -127,7 +127,8 @@ instance MonadSpaces m => Action m BeginMultipart where
                , method         = Just POST
                , body           = Nothing
                , overrideRegion = Nothing
-               , queryString    = Just
+               , queryString    = Nothing
+               , subresources   = Just
                      $ H.toQuery [ ( "uploads" :: ByteString
                                    , Nothing :: Maybe ByteString
                                    )
@@ -166,6 +167,7 @@ instance MonadSpaces m => Action m UploadPart where
                , body           = Just body
                , method         = Just PUT
                , overrideRegion = Nothing
+               , subresources   = Nothing
                , headers        = mempty
                , queryString    = Just
                      $ H.toQuery [ ("partNumber" :: Text, tshow partNumber)
@@ -209,6 +211,7 @@ instance MonadSpaces m => Action m CompleteMultipart where
                , object         = session ^? field @"object"
                , method         = Just POST
                , overrideRegion = Nothing
+               , subresources   = Nothing
                , headers        = mempty
                , queryString    = Just
                      $ H.toQuery [ ( "uploadId" :: Text
@@ -263,6 +266,7 @@ instance MonadSpaces m => Action m CancelMultipart where
                , body           = Nothing
                , overrideRegion = Nothing
                , headers        = mempty
+               , subresources   = Nothing
                , queryString    = Just
                      $ H.toQuery [ ( "uploadId" :: Text
                                    , session ^. field @"uploadID"
@@ -302,6 +306,7 @@ instance MonadSpaces m => Action m ListParts where
                , method         = Nothing
                , body           = Nothing
                , overrideRegion = Nothing
+               , subresources   = Nothing
                , headers        = mempty
                , queryString    = Just
                      $ H.toQuery [ ( "uploadId" :: Text

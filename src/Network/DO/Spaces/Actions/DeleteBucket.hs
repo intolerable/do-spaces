@@ -51,6 +51,7 @@ instance MonadSpaces m => Action m DeleteBucket where
                , body           = Nothing
                , object         = Nothing
                , queryString    = Nothing
+               , subresources   = Nothing
                , headers        = mempty
                , overrideRegion = Nothing
                , ..

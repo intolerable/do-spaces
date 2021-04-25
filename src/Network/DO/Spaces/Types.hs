@@ -159,6 +159,7 @@ data SpacesRequestBuilder = SpacesRequestBuilder
     , bucket         :: Maybe Bucket
     , object         :: Maybe Object
     , queryString    :: Maybe Query
+    , subresources   :: Maybe Query
     , overrideRegion :: Maybe Region
       -- ^ Certain operations, currently only 'Network.DO.Spaces.CreateBucket',
       -- should be able to override the region configured in the 'Spaces'

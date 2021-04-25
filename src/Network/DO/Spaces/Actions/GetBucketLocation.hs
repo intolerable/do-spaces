@@ -68,7 +68,8 @@ instance MonadSpaces m => Action m GetBucketLocation where
                , object         = Nothing
                , headers        = mempty
                , overrideRegion = Nothing
-               , queryString    = Just
+               , queryString    = Nothing
+               , subresources   = Just
                      $ H.toQuery [ ( "location" :: ByteString
                                    , Nothing :: Maybe ByteString
                                    )
@@ -81,4 +82,4 @@ instance MonadSpaces m => Action m GetBucketLocation where
         GetBucketLocationResponse
             <$> (X.forceM (xmlElemError "LocationConstraint")
                  $ cursor $.// X.laxElement "LocationConstraint" &/ X.content
-                 &| slugToRegion . T.strip)
+                 &| (slugToRegion . T.strip))

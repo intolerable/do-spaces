@@ -50,6 +50,7 @@ instance MonadSpaces m => Action m DeleteObject where
                , method         = Just DELETE
                , body           = Nothing
                , queryString    = Nothing
+               , subresources   = Nothing
                , headers        = mempty
                , overrideRegion = Nothing
                , ..

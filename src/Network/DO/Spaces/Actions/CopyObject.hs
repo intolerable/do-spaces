@@ -94,6 +94,7 @@ instance MonadSpaces m => Action m CopyObject where
                , method         = Just PUT
                , body           = Nothing
                , queryString    = Nothing
+               , subresources   = Nothing
                , overrideRegion = Nothing
                , ..
                }

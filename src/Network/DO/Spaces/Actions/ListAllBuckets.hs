@@ -64,6 +64,7 @@ instance MonadSpaces m => Action m ListAllBuckets where
                , method         = Nothing
                , object         = Nothing
                , queryString    = Nothing
+               , subresources   = Nothing
                , bucket         = Nothing
                , headers        = mempty
                , overrideRegion = Nothing

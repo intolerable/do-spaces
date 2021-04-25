@@ -76,6 +76,7 @@ instance MonadSpaces m => Action m UploadObject where
                , method         = Just PUT
                , body           = Just body
                , queryString    = Nothing
+               , subresources   = Nothing
                , overrideRegion = Nothing
                , ..
                }

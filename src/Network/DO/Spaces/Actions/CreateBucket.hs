@@ -61,6 +61,7 @@ instance MonadSpaces m => Action m CreateBucket where
                , body           = Nothing
                , object         = Nothing
                , queryString    = Nothing
+               , subresources   = Nothing
                , ..
                }
       where

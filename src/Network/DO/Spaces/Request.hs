@@ -94,11 +94,15 @@ newSpacesRequest SpacesRequestBuilder { .. } time = do
         newHeaders       = overrideReqHeaders req payloadHash time
         request          = req
             { H.requestHeaders = headers <> newHeaders
-            , H.queryString    = maybe mempty (H.renderQuery True) queryString
+            , H.queryString    =
+                  maybe mempty (H.renderQuery True) subresources
+                  <> maybe mempty (H.renderQuery False) queryString
             , H.requestBody    = reqBody
             }
-        canonicalRequest =
-            mkCanonicalized (fromMaybe mempty queryString) request payloadHash
+        canonicalRequest = mkCanonicalized (fromMaybe mempty subresources)
+                                           (fromMaybe mempty queryString)
+                                           request
+                                           payloadHash
     return
         $ SpacesRequest
         { method = reqMethod, headers = headers <> newHeaders, .. }
@@ -108,15 +112,17 @@ newSpacesRequest SpacesRequestBuilder { .. } time = do
     reqBody   = fromMaybe (RequestBodyLBS LB.empty) body
 
 -- | Canonicalize a 'Request'
-mkCanonicalized :: Query
+mkCanonicalized :: Query -- ^ Subresources
+                -> Query  -- ^ Query string
                 -> Request
                 -> Hashed  -- ^ The hashed 'RequestBody'
                 -> Canonicalized Request
-mkCanonicalized query request payloadHash = Canonicalized
+mkCanonicalized subresources query request payloadHash = Canonicalized
     $ C.intercalate "\n"
                     [ request & H.method
                     , request & H.path
-                    , renderQueryString query
+                    , renderSubresources subresources
+                      <> H.renderQuery False query
                     , request
                       & H.requestHeaders
                       & canonicalizeHeaders
@@ -125,11 +131,11 @@ mkCanonicalized query request payloadHash = Canonicalized
                     , uncompute payloadHash
                     ]
 
--- | This is required to encode the query string correctly in the canonical
--- request. Empty query keys require a trailing @=@, which are not included
--- with 'H.renderQuery'
-renderQueryString :: Query -> ByteString
-renderQueryString = C.intercalate "&" . fmap renderQueryItem . sort
+-- | This is required to encode the subresources query string correctly in the
+-- canonical request. Empty query keys require a trailing @=@, which are not
+-- included with 'H.renderQuery'
+renderSubresources :: Query -> ByteString
+renderSubresources = C.intercalate "&" . fmap renderQueryItem . sort
   where
     renderQueryItem :: QueryItem -> ByteString
     renderQueryItem (k, Nothing) = k <> "="

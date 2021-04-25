@@ -109,6 +109,7 @@ instance MonadSpaces m => Action m ListBucket where
                , object         = Nothing
                , method         = Nothing
                , headers        = mempty
+               , subresources   = Nothing
                , overrideRegion = Nothing
                , ..
                }
