@@ -384,7 +384,7 @@ data WithMetadata = KeepMetadata | NoMetadata
 
 -- | A 'ConsumedResponse' with optional 'SpacesMetadata'
 data SpacesResponse a = SpacesResponse
-    { value    :: ConsumedResponse a
+    { result   :: ConsumedResponse a
       -- ^ A 'Response' consumed by an 'Action' instance
     , metadata :: Maybe SpacesMetadata
       -- ^ 'SpacesMetadata', the retention of which can be controlled using
@@ -394,7 +394,7 @@ data SpacesResponse a = SpacesResponse
 
 deriving instance (Show (ConsumedResponse a)) => Show (SpacesResponse a)
 
--- This instance is necessary to make the polymorphic @value@ field work with
+-- This instance is necessary to make the polymorphic @result@ field work with
 -- HasField
 instance {-# OVERLAPPING #-}( GL.HasField' name (SpacesResponse a) s
                             , s ~ t

@@ -109,7 +109,7 @@ runAction withMD action = do
                 Nothing     -> throwM . HTTPStatus status
                     =<< runConduit (body .| sinkLbs)
 
-        value <- consumeResponse @_ @a raw
+        result <- consumeResponse @_ @a raw
         return SpacesResponse { .. }
 
 parseErrorResponse

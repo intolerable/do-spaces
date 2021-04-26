@@ -77,7 +77,7 @@ import           Data.Conduit.Binary         ( sinkLbs )
 import           Data.Conduit.List           ( consume )
 import           Data.Foldable               ( asum )
 import           Data.Generics.Product       ( HasField(field) )
-import           Data.Sequence               ( Seq(Empty) )
+import           Data.Sequence               ( Seq )
 import qualified Data.Text                   as T
 import           Data.Text                   ( Text )
 
@@ -188,7 +188,7 @@ multipartObject contentType bucket object size body
     | size < 5242880 = throwM
         $ InvalidRequest "multipartObject: Chunk size must be greater than/equal to 5MB"
     | otherwise = do
-        session <- beginMultipart <&> (^. field @"value" . field @"session")
+        session <- beginMultipart <&> (^. field @"result" . field @"session")
         catch @_ @SpacesException (run session) $ \e -> do
             void . runAction NoMetadata $ CancelMultipart session
             throwM e
@@ -213,7 +213,7 @@ multipartObject contentType bucket object size body
                     $ runSpaces spaces
                                 (runAction NoMetadata
                                  $ UploadPart session n (RequestBodyLBS v))
-                    <&> (^. field @"value" . field @"etag")
+                    <&> (^. field @"result" . field @"etag")
                 yield etag >> go (n + 1)
 
     inChunks = loop 0 []
@@ -346,14 +346,17 @@ listBucketGrouped bucket delimiter prefix =
 
     marker  = Nothing
 
+-- | Recursively list /all/ 'Object's in a 'Bucket', calling 'ListBucket' until
+-- @isTruncated@ is @False@. This operation may take some time, depending on the
+-- total number of objects in your bucket
 listBucketRec :: MonadSpaces m => Bucket -> m (Seq ObjectInfo)
-listBucketRec bucket = go Empty Nothing
+listBucketRec bucket = go mempty Nothing
   where
     go os marker = do
         r <- runAction NoMetadata
             $ ListBucket
             { delimiter = Nothing, maxKeys = Nothing, prefix = Nothing, .. }
-        let v           = r ^. field @"value"
+        let v           = r ^. field @"result"
             isTruncated = v ^. field @"isTruncated"
             objects     = v ^. field @"objects"
             nextMarker  = v ^. field @"nextMarker"
