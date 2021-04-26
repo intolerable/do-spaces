@@ -161,6 +161,25 @@ objectCreateDelete = do
   where
     body = sourceLazy "hello from haskell"
 
+bucketActions :: IO ()
+bucketActions = do
+    (bucket, spaces) <- readConf
+    hspec $ do
+        describe "Network.DO.Spaces.Actions.GetBucketLocation"
+            . it "retrieves a bucket's location"
+            $ do
+                location <- runSpaces spaces $ getBucketLocation bucket
+                getStatus location `shouldBe` Just 200
+                (location ^. #result . #locationConstraint)
+                    `shouldBe` (spaces ^. #region)
+
+        describe "Network.DO.Spaces.Actions.ListAllBuckets"
+            . it "lists account owner's buckets"
+            $ do
+                allBuckets <- runSpaces spaces listAllBuckets
+                (allBuckets ^.. #result . #buckets . each . #name)
+                    `shouldContain` [ bucket ]
+
 bucketCreateDelete :: IO ()
 bucketCreateDelete = do
     (_, spaces) <- readConf
