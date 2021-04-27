@@ -413,8 +413,11 @@ type RequestID = Text
 -- How to discover 'AccessKey's and 'SecretKey's when creating a new
 -- 'Spaces' object
 data CredentialSource
-    = InEnv (Maybe (Text, Text)) -- ^ 'AccessKey' and 'SecretKey' env vars
-    | Explicit AccessKey SecretKey -- ^ Provide both
+    = FromEnv (Maybe (Text, Text)) -- ^ 'AccessKey' and 'SecretKey' env vars
+    | FromFile FilePath (Maybe Profile)
+      -- ^ Load your credentials from a file, optionally providing the profile
+      -- to use (or @default@ as the... default)
+    | Explicit AccessKey SecretKey -- ^ Provide both keys explicitly
 
 -- | \"Canned\" access controls; Spaces doesn't support the full range offered
 -- by s3
