@@ -55,7 +55,7 @@ import           Network.DO.Spaces.Utils
                  , xmlDocCursor
                  )
 
--- | Whether the 'Object''s metadata should be copied or replaced. Replace is
+-- | Whether the 'Object'\'s metadata should be copied or replaced. Replace is
 -- required to copy an object to itself
 data MetadataDirective = Copy | Replace
     deriving ( Show, Eq, Generic )

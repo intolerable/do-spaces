@@ -232,7 +232,7 @@ mkObject :: MonadThrow m => Text -> m Object
 mkObject "" = throwM . OtherError $ "Object: Name must not be empty"
 mkObject x  = return $ Object x
 
--- | Information about a single 'Object', returned when listing a 'Bucket''s
+-- | Information about a single 'Object', returned when listing a 'Bucket'\'s
 -- contents
 data ObjectInfo = ObjectInfo
     { object       :: Object

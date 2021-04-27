@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 
 -- |
@@ -27,7 +28,9 @@ module Network.DO.Spaces
       -- ** Object operations
     , multipartObject
     , uploadObject
+    , uploadFile
     , getObject
+    , getObjectSinkFile
     , getObjectInfo
     , copyObject
     , copyObjectWithin
@@ -40,7 +43,8 @@ module Network.DO.Spaces
     , listAllBuckets
     , listBucket
     , listBucketGrouped
-      -- * Type re-exports
+    , listBucketRec
+      -- * Re-exports
     , Spaces
     , SpacesResponse
     , SpacesMetadata
@@ -55,13 +59,16 @@ module Network.DO.Spaces
     , SpacesException(..)
     , ClientException(..)
     , APIException(..)
-    , listBucketRec
     ) where
 
 import           Conduit
                  ( (.|)
                  , await
                  , runConduit
+                 , runConduitRes
+                 , sinkFileCautious
+                 , sourceLazy
+                 , withSourceFile
                  , yield
                  )
 
@@ -89,9 +96,15 @@ import           Network.DO.Spaces.Types
 import           Network.DO.Spaces.Utils     ( defaultUploadHeaders )
 import           Network.HTTP.Client.Conduit ( RequestBody(RequestBodyLBS) )
 import           Network.HTTP.Client.TLS     ( getGlobalManager )
-import           Network.Mime                ( MimeType )
+import           Network.Mime
+                 ( MimeType
+                 , defaultMimeMap
+                 , defaultMimeType
+                 , mimeByExt
+                 )
 
 import           System.Environment          ( lookupEnv )
+import qualified System.FilePath             as F
 
 -- | Perform a transaction using your 'Spaces' client configuration. Note that
 -- this does /not/ perform any exception handling; if caught at the lower level,
@@ -138,29 +151,6 @@ newSpaces region cs = do
 
     mkKey f = f . C.pack
 
--- $conv
--- The following are convenience actions. In most cases, each action is the same
--- as applying 'runAction' to a type that implements the 'Action' typeclass.
--- Information about the response is retained ('SpacesMetadata') in each action.
--- For instance:
---
--- > deleteBucket myBucket
---
--- is the equivalent of
---
--- > runAction KeepMetadata DeleteBucket { bucket = myBucket }
---
--- All of the underlying instances of 'Action' are exposed and can be imported from
--- "Network.DO.Spaces.Actions" and its sub-modules. The convenience actions exposed
--- in the present module attempt to choose sane defaults where applicable.
---
--- The only major exception to the above are actions which involve uploading object
--- data to Spaces. In the case of 'uploadObject', the action converts its 'BodyBS'
--- argument to a 'RequestBodyLBS'. Should you choose to directly construct
--- 'UploadObject', you must do this manually. 'multipartObject' is more complicated,
--- and takes care of chunking the request body, sending each individual request,
--- and completing the multipart request
---
 -- | Upload an 'Object' within a single request
 uploadObject :: MonadSpaces m
              => Maybe MimeType
@@ -387,3 +377,31 @@ listBucketRec bucket = go mempty Nothing
                 | isTruncated -> go (os <> objects) nextMarker
                 | otherwise -> return $ os <> objects
             Nothing -> return $ os <> objects
+-- $conv
+-- The following are convenience actions. In most cases, each action is the same
+-- as applying 'runAction' to a type that implements the 'Action' typeclass.
+-- Information about the response is retained ('SpacesMetadata') in each action.
+-- For instance:
+--
+-- > deleteBucket myBucket
+--
+-- is the equivalent of
+--
+-- > runAction KeepMetadata DeleteBucket { bucket = myBucket }
+--
+-- All of the underlying instances of 'Action' are exposed and can be imported from
+-- "Network.DO.Spaces.Actions" and its sub-modules. The convenience actions exposed
+-- in the present module attempt to choose sane defaults where applicable.
+--
+-- The only major exception to the above are actions which involve uploading object
+-- data to Spaces. In the case of 'uploadObject', the action converts its 'BodyBS'
+-- argument to a 'RequestBodyLBS'. Should you choose to directly construct
+-- 'UploadObject', you must do this manually. 'multipartObject' is more complicated,
+-- and takes care of chunking the request body, sending each individual request,
+-- and completing the multipart request
+--
+-- In addition to convenience wrappers around 'Action' instances, this module exports
+-- several actions which may be of use, including sinking remote 'Object' data into
+-- a file, uploading the contents of a file as an 'Object', and recursively listing
+-- the entire contents of a 'Bucket'
+--
