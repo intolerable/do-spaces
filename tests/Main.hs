@@ -19,24 +19,6 @@ import           Data.Time.Format.ISO8601  ( iso8601ParseM )
 
 import           Network.DO.Spaces         ( newSpaces )
 import           Network.DO.Spaces.Actions
-                 ( BeginMultipart
-                 , BeginMultipartResponse(..)
-                 , CopyObject(..)
-                 , CopyObjectResponse(..)
-                 , GetBucketLocation
-                 , GetBucketLocationResponse(..)
-                 , GetObjectInfo
-                 , ListAllBuckets
-                 , ListAllBucketsResponse(..)
-                 , ListBucket(..)
-                 , ListBucketResponse(..)
-                 , ListParts
-                 , ListPartsResponse(..)
-                 , MetadataDirective(Copy)
-                 , MultipartSession(..)
-                 , Part(..)
-                 , parseErrorResponse
-                 )
 import           Network.DO.Spaces.Request
 import           Network.DO.Spaces.Types
 import           Network.HTTP.Types        ( mkStatus )
@@ -68,17 +50,17 @@ requests = do
     sp <- testSpaces
     spacesRequest <- newSpacesRequest (testBuilder sp) testTime
 
-    hspec . describe "Spaces requests" $ do
-        it "Generates the canonical request"
+    hspec . describe "Network.DO.Spaces.Request" $ do
+        it "generates the canonical request"
             $ (spacesRequest & canonicalRequest) `shouldBe` canonRequest
 
-        it "Generates the string to sign"
+        it "generates the string to sign"
             $ mkStringToSign spacesRequest `shouldBe` strToSign
 
-        it "Generates the signature"
+        it "generates the signature"
             $ mkSignature spacesRequest strToSign `shouldBe` sig
 
-        it "Generates the authorization"
+        it "generates the authorization"
             $ mkAuthorization spacesRequest strToSign `shouldBe` auth
   where
     bodyHash           =
@@ -128,6 +110,7 @@ requests = do
         , headers        = mempty
         , bucket         = Just testBucket
         , object         = Nothing
+        , subresources   = Nothing
         , queryString    = Nothing
         , overrideRegion = Nothing
         }
@@ -148,8 +131,8 @@ errorResponse = do
         parseErrorResponse status raw
 
     hspec
-        . describe "APIException parsing"
-        . it "parses APIException correctly"
+        . describe "Network.DO.Spaces.Actions.parseErrorResponse"
+        . it "parses Spaces XML error responses correctly"
         $ apiEx
         `shouldBe` APIException
         { code      = "SignatureDoesNotMatch"
@@ -172,8 +155,8 @@ listAllBucketsResponse = do
     d2 <- iso8601ParseM @_ @UTCTime "2017-06-23T18:37:48.157Z"
 
     hspec
-        . describe "ListAllBuckets response"
-        . it "parses ListAllBucketsResponse correctly"
+        . describe "Network.DO.Spaces.Actions.ListAllBuckets"
+        . it "parses the response correctly"
         $ allBuckets
         `shouldBe` ListAllBucketsResponse
         { owner   = Owner (OwnerID 6174283) (OwnerID 6174283)
@@ -193,8 +176,8 @@ listBucket = do
     d1 <- iso8601ParseM @_ @UTCTime "2017-07-13T18:40:46.777Z"
     d2 <- iso8601ParseM @_ @UTCTime "2017-07-14T17:44:03.597Z"
 
-    hspec . describe "ListBucket response" $ do
-        it "parses ListBucketResponse correctly"
+    hspec . describe "Network.DO.Spaces.Actions.ListBucket" $ do
+        it "parses the response correctly"
             $ bucketContents `shouldBe` listBucketResp d1 d2
 
         it "ensures maxKeys is within the correct range" $ do
@@ -252,8 +235,8 @@ bucketLocationResponse = do
             runSpacesT (consumeResponse @_ @GetBucketLocation raw) sp
 
     hspec
-        . describe "GetBucketLocation response"
-        . it "parses GetBucketLocationResponse correctly"
+        . describe "Network.DO.Spaces.Actions.GetBucketLocation"
+        . it "parses the response correctly"
         $ bucketContents
         `shouldBe` GetBucketLocationResponse { locationConstraint = NewYork }
 
@@ -270,8 +253,8 @@ objectInfoResponse = do
     objectInfo <- runSpacesT (consumeResponse @_ @GetObjectInfo raw) sp
 
     hspec
-        . describe "GetObjectInfo response"
-        . it "parses GetObjectInfo response headers correctly"
+        . describe "Network.DO.Spaces.Actions.GetObjectInfo"
+        . it "parses response headers correctly"
         $ objectInfo
         `shouldBe` ObjectMetadata
         { contentLength = 14
@@ -292,8 +275,8 @@ copyObject = do
                 raw     = RawResponse { .. }
             runSpacesT (consumeResponse @_ @CopyObject raw) sp
 
-    hspec . describe "CopyObject request/response" $ do
-        it "parses CopyObjectResponse correctly"
+    hspec . describe "Network.DO.Spaces.Actions.CopyObject" $ do
+        it "parses the response correctly"
             $ copyObjectResp
             `shouldBe` CopyObjectResponse
             { lastModified = copyObjectDate
@@ -332,8 +315,8 @@ beginMultipartResponse = do
             runSpacesT (consumeResponse @_ @BeginMultipart raw) sp
 
     hspec
-        . describe "BeginMultipart response"
-        . it "parses BeginMultipartResponse correctly"
+        . describe "Network.DO.Spaces.Actions.BeginMultipart"
+        . it "parses the response correctly"
         $ multipart
         `shouldBe` BeginMultipartResponse
         { session = MultipartSession
@@ -353,8 +336,8 @@ listPartsResponse = do
         runSpacesT (consumeResponse @_ @ListParts raw) sp
 
     hspec
-        . describe "ListParts response"
-        . it "parses ListPartsResponse correctly"
+        . describe "Network.DO.Spaces.Actions.ListParts"
+        . it "parses the response correctly"
         $ listParts `shouldBe` listPartsResp d
   where
     listPartsResp lastModified = ListPartsResponse
@@ -382,7 +365,7 @@ listPartsResponse = do
         }
 
 bucketName :: IO ()
-bucketName = hspec . describe "mkBucket constructor" $ do
+bucketName = hspec . describe "Network.DO.Spaces.Types.mkBucket" $ do
     it "rejects invalid Bucket names"
         . for_ [ "doc_example_bucket"
                , "doc-example-bucket-"
@@ -396,7 +379,7 @@ bucketName = hspec . describe "mkBucket constructor" $ do
                , "log-delivery-march-2020"
                , "my-hosted-content"
                ]
-        $ \name -> mkBucket @Maybe name `shouldSatisfy` isJust
+        $ \name -> mkBucket name `shouldSatisfy` isJust
   where
     matchErr (OtherError _) = True
     matchErr _              = False
