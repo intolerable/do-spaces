@@ -72,8 +72,8 @@ module Network.DO.Spaces.Types
     , ObjectMetadata(..)
     , CannedACL(..)
       -- * Exceptions
+    , SpacesException
     , ClientException(..)
-    , SpacesException(..)
     , APIException(..)
     ) where
 

@@ -26,8 +26,8 @@ module Network.DO.Spaces
       -- * Convenience actions
       -- $conv
       -- ** Object operations
-    , multipartObject
     , uploadObject
+    , multipartObject
     , uploadFile
     , getObject
     , getObjectSinkFile
@@ -56,7 +56,7 @@ module Network.DO.Spaces
     , AccessKey(..)
     , SecretKey(..)
     , CredentialSource(..)
-    , SpacesException(..)
+    , SpacesException
     , ClientException(..)
     , APIException(..)
     ) where
@@ -404,4 +404,7 @@ listBucketRec bucket = go mempty Nothing
 -- several actions which may be of use, including sinking remote 'Object' data into
 -- a file, uploading the contents of a file as an 'Object', and recursively listing
 -- the entire contents of a 'Bucket'
+--
+--
+--
 --
