@@ -412,14 +412,6 @@ type RequestID = Text
 
 -- | How to discover 'AccessKey's and 'SecretKey's when creating a new 'Spaces'
 -- client.
---
--- @FromFile@ expects a configuration file in the same format as AWS credentials
--- files, with the same field names. For example:
---
--- > [default]
--- > aws_access_key_id=AKIAIOSFODNN7EXAMPLE
--- > aws_secret_access_key=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
---
 data CredentialSource
     = FromEnv (Maybe (Text, Text)) -- ^ 'AccessKey' and 'SecretKey' env vars
     | FromFile FilePath (Maybe Profile)
