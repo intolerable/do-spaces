@@ -35,8 +35,10 @@ module Network.DO.Spaces.Types
     , CredentialSource(..)
       -- * Requests and responses
     , SpacesRequest(..)
+    , SpacesResponse(..)
     , SpacesRequestBuilder(..)
     , SpacesMetadata(..)
+    , WithMetadata(..)
     , RawResponse(..)
     , Method(..)
     , Region(..)
@@ -73,8 +75,6 @@ module Network.DO.Spaces.Types
     , ClientException(..)
     , SpacesException(..)
     , APIException(..)
-    , SpacesResponse(..)
-    , WithMetadata(..)
     ) where
 
 import           Conduit                      ( ConduitT, MonadUnliftIO )
@@ -315,7 +315,6 @@ data Computed (a :: ComputedTag) where
     StringToSign :: ByteString -> Computed 'StrToSign
     -- | Signed hash of a 'Request' body, a 'SecretKey', and request information
     Signature :: ByteString -> Computed 'Sig
-    -- | Signed hash of a 'Request' body, a 'SecretKey', and request information
     Credentials :: ByteString -> Computed 'Cred
     -- | Authorization string containing information about your 'AccessKey' and
     -- your request

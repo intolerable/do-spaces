@@ -231,6 +231,20 @@ multipartObject contentType bucket object size body
 
         yieldChunk = yield . LB.fromChunks . reverse
 
+-- | Upload a file's contents as an 'Object'. This will attempt to set the
+-- correct 'Network.Mime.MimeType' based on the file extension
+uploadFile :: forall m.
+           MonadSpaces m
+           => Bucket
+           -> Object
+           -> FilePath
+           -> m (SpacesResponse UploadObject)
+uploadFile bucket object fp = withSourceFile @_ @m fp $ \body ->
+    uploadObject (Just mtype) bucket object body
+  where
+    mtype =
+        mimeByExt defaultMimeMap defaultMimeType . T.pack $ F.takeFileName fp
+
 -- | Get information about an 'Object' (does not retrieve the body of the object)
 getObjectInfo
     :: MonadSpaces m => Bucket -> Object -> m (SpacesResponse GetObjectInfo)
@@ -239,6 +253,13 @@ getObjectInfo bucket object = runAction KeepMetadata GetObjectInfo { .. }
 -- | Get an 'Object' (retrieves the actual body of the object)
 getObject :: MonadSpaces m => Bucket -> Object -> m (SpacesResponse GetObject)
 getObject bucket object = runAction KeepMetadata GetObject { .. }
+
+-- | Get an 'Object'\'s data and write it to the provided 'FilePath'
+getObjectSinkFile :: MonadSpaces m => Bucket -> Object -> FilePath -> m ()
+getObjectSinkFile bucket object fp = do
+    objectData <- getObject bucket object
+        <&> (^. field @"result" . field @"objectData")
+    runConduitRes $ sourceLazy objectData .| sinkFileCautious fp
 
 -- | Copy an 'Object' from one 'Bucket' to another; this chooses a number of
 -- defaults to represent the most common cases and avoid a preponderance of
