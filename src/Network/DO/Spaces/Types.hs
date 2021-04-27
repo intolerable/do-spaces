@@ -352,6 +352,10 @@ newtype AccessKey = AccessKey { unAccessKey :: ByteString }
 newtype SecretKey = SecretKey { unSecretKey :: ByteString }
     deriving ( Show, Eq, Generic )
 
+-- | The name of a per-project configuration profile to select when loading
+-- credentials from a file
+type Profile = Text
+
 -- Generate a 'SpacesRequestBuilder' for a given type, settings the appropriate
 -- specific 'Header's, etc..., for that type
 class Monad m => Action m a where
