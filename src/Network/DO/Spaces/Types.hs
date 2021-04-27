@@ -33,6 +33,19 @@ module Network.DO.Spaces.Types
     , MonadSpaces
     , Action(..)
     , CredentialSource(..)
+    , Profile
+      -- * Buckets and Objects
+    , Object(..)
+    , mkObject
+    , Bucket(..)
+    , mkBucket
+    , BucketInfo(..)
+    , OwnerID(..)
+    , DisplayName
+    , Owner(..)
+    , ObjectInfo(..)
+    , ObjectMetadata(..)
+    , CannedACL(..)
       -- * Requests and responses
     , SpacesRequest(..)
     , SpacesResponse(..)
@@ -59,18 +72,6 @@ module Network.DO.Spaces.Types
     , UserMetadata
     , UploadHeaders(..)
     , BodyBS
-      -- * Buckets and Objects
-    , Object(..)
-    , mkObject
-    , Bucket(..)
-    , mkBucket
-    , BucketInfo(..)
-    , OwnerID(..)
-    , DisplayName
-    , Owner(..)
-    , ObjectInfo(..)
-    , ObjectMetadata(..)
-    , CannedACL(..)
       -- * Exceptions
     , SpacesException
     , ClientException(..)
