@@ -60,6 +60,7 @@ import qualified Data.Text.Encoding         as T
 import           Data.Time.Clock.POSIX      ( getPOSIXTime )
 
 import           Lens.Micro
+import           Lens.Micro.GHC             ()
 
 import           Network.DO.Spaces
 import           Network.DO.Spaces.Utils    ( slugToRegion )
@@ -71,6 +72,7 @@ import           Test.Hspec
 
 main :: IO ()
 main = sequence_ [ bucketCreateDelete
+                 , bucketActions
                  , objectCreateDelete
                  , objectActions
                  , multipart
@@ -156,8 +158,6 @@ objectCreateDelete = do
                 <- retry404 20 . runSpaces spaces $ deleteObject bucket object
             getStatus deleted `shouldBe` Just 204
             (deleted ^. #result) `shouldBe` ()
-
-            pending
   where
     body = sourceLazy "hello from haskell"
 
@@ -191,12 +191,6 @@ bucketCreateDelete = do
             created <- runSpaces spaces $ createBucket bucket Nothing Nothing
             getStatus created `shouldBe` Just 200
             (created ^. #result) `shouldBe` ()
-
-            location
-                <- retry404 20 . runSpaces spaces $ getBucketLocation bucket
-            getStatus location `shouldBe` Just 200
-            (location ^. #result . #locationConstraint)
-                `shouldBe` (spaces ^. #region)
 
             deleted <- retry404 20 . runSpaces spaces $ deleteBucket bucket
             getStatus deleted `shouldBe` Just 204
