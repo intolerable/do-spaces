@@ -64,9 +64,12 @@ module Network.DO.Spaces
 import           Conduit
                  ( (.|)
                  , await
+                 , decodeUtf8C
                  , runConduit
                  , runConduitRes
                  , sinkFileCautious
+                 , sinkLazy
+                 , sourceFile
                  , sourceLazy
                  , withSourceFile
                  , yield
@@ -78,16 +81,22 @@ import           Control.Monad.Catch.Pure    ( MonadCatch(catch) )
 import           Control.Monad.IO.Class      ( MonadIO(liftIO) )
 import           Control.Monad.Reader.Class  ( ask )
 
+import           Data.Bifunctor              ( Bifunctor(bimap) )
 import           Data.Bool                   ( bool )
 import qualified Data.ByteString.Char8       as C
 import qualified Data.ByteString.Lazy        as LB
+import           Data.Coerce                 ( coerce )
 import           Data.Conduit.Binary         ( sinkLbs )
 import           Data.Conduit.List           ( consume )
 import           Data.Foldable               ( asum )
 import           Data.Generics.Product       ( HasField(field) )
+import qualified Data.Ini.Config             as I
+import           Data.Maybe                  ( fromMaybe )
 import           Data.Sequence               ( Seq )
 import qualified Data.Text                   as T
 import           Data.Text                   ( Text )
+import qualified Data.Text.Encoding          as T
+import qualified Data.Text.Lazy              as LT
 
 import           Lens.Micro                  ( (<&>), (^.) )
 
@@ -115,7 +124,24 @@ import qualified System.FilePath             as F
 runSpaces :: Spaces -> SpacesT m a -> m a
 runSpaces = flip runSpacesT
 
--- | Create a new 'Spaces' from your credentials and a 'Region'
+-- | Create a new 'Spaces' in a given 'Region' while specifying a method to retrieve
+-- your credentials:
+--
+-- 'FromFile' expects a configuration file in the same format as AWS credentials
+-- files, with the same field names. For example:
+--
+-- > [default]
+-- > aws_access_key_id=AKIAIOSFODNN7EXAMPLE
+-- > aws_secret_access_key=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+--
+-- 'FromEnv' will look up the following environment variables to find your
+-- keys:  @AWS_ACCESS_KEY_ID@ , @SPACES_ACCESS_KEY_ID@ , @SPACES_ACCESS_KEY@
+-- for the 'AccessKey', and  @AWS_SECRET_ACCESS_KEY@ , @SPACES_SECRET_ACCESS_KEY@
+-- , and @SPACES_SECRET_KEY@ for your 'SecretKey'. Alternatively, you can directly
+-- specify the environment variables to consult.
+--
+-- You can also choose to provide both keys yourself with 'Explicit'
+--
 newSpaces
     :: (MonadThrow m, MonadIO m) => Region -> CredentialSource -> m Spaces
 newSpaces region cs = do
@@ -123,10 +149,10 @@ newSpaces region cs = do
     (accessKey, secretKey) <- liftIO $ source cs
     return Spaces { .. }
   where
-    source (Explicit ak sk)              = return (ak, sk)
-    source (InEnv (Just (akEnv, skEnv))) =
+    source (Explicit ak sk) = return (ak, sk)
+    source (FromEnv (Just (akEnv, skEnv))) =
         ensureKeys =<< (,) <$> lookupKey akEnv <*> lookupKey skEnv
-    source (InEnv Nothing)               = do
+    source (FromEnv Nothing) = do
         ak <- lookupKeys [ "AWS_ACCESS_KEY_ID"
                          , "SPACES_ACCESS_KEY_ID"
                          , "SPACES_ACCESS_KEY"
@@ -137,7 +163,20 @@ newSpaces region cs = do
                          ]
         ensureKeys (ak, sk)
 
-    throwMissingKeys k = throwM . MissingKeys $ "Missing " <> k
+    source (FromFile fp profile) = do
+        contents <- LT.toStrict
+            <$> runConduitRes (sourceFile fp .| decodeUtf8C .| sinkLazy)
+        case I.parseIniFile contents parseConf of
+            Left _   ->
+                throwM $ ConfigurationError "Failed to read credentials file"
+            Right ks -> return
+                $ bimap (coerce . T.encodeUtf8) (coerce . T.encodeUtf8) ks
+      where
+        parseConf = I.section (fromMaybe "default" profile)
+            $ (,) <$> I.field "aws_access_key_id"
+            <*> I.field "aws_secret_access_key"
+
+    throwMissingKeys k = throwM . ConfigurationError $ "Missing " <> k
 
     lookupKeys xs = asum <$> sequence (lookupEnv <$> xs)
 

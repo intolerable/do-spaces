@@ -410,13 +410,21 @@ instance {-# OVERLAPPING #-}( GL.HasField' name (SpacesResponse a) s
 -- | A unique ID that is assigned to each request
 type RequestID = Text
 
--- How to discover 'AccessKey's and 'SecretKey's when creating a new
--- 'Spaces' object
+-- | How to discover 'AccessKey's and 'SecretKey's when creating a new 'Spaces'
+-- client.
+--
+-- @FromFile@ expects a configuration file in the same format as AWS credentials
+-- files, with the same field names. For example:
+--
+-- > [default]
+-- > aws_access_key_id=AKIAIOSFODNN7EXAMPLE
+-- > aws_secret_access_key=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+--
 data CredentialSource
     = FromEnv (Maybe (Text, Text)) -- ^ 'AccessKey' and 'SecretKey' env vars
     | FromFile FilePath (Maybe Profile)
       -- ^ Load your credentials from a file, optionally providing the profile
-      -- to use (or @default@ as the... default)
+      -- to use (or @default@ as the... default).
     | Explicit AccessKey SecretKey -- ^ Provide both keys explicitly
 
 -- | \"Canned\" access controls; Spaces doesn't support the full range offered
@@ -446,7 +454,7 @@ spsExFromException e = do
 data ClientException
     = InvalidRequest Text
     | InvalidXML Text
-    | MissingKeys Text
+    | ConfigurationError Text
       -- | This includes the raw 'Response' body, read into a
       -- lazy 'LB.ByteString'
     | HTTPStatus Status LB.ByteString
