@@ -43,6 +43,7 @@ module Network.DO.Spaces
       -- * Type re-exports
     , Spaces
     , SpacesResponse
+    , SpacesMetadata
     , Bucket
     , mkBucket
     , Object
@@ -353,13 +354,13 @@ listBucketRec :: MonadSpaces m => Bucket -> m (Seq ObjectInfo)
 listBucketRec bucket = go mempty Nothing
   where
     go os marker = do
-        r <- runAction NoMetadata
+        listed <- runAction NoMetadata
             $ ListBucket
             { delimiter = Nothing, maxKeys = Nothing, prefix = Nothing, .. }
-        let v           = r ^. field @"result"
-            isTruncated = v ^. field @"isTruncated"
-            objects     = v ^. field @"objects"
-            nextMarker  = v ^. field @"nextMarker"
+        let r           = listed ^. field @"result"
+            isTruncated = r ^. field @"isTruncated"
+            objects     = r ^. field @"objects"
+            nextMarker  = r ^. field @"nextMarker"
         case nextMarker of
             Just _
                 | isTruncated -> go (os <> objects) nextMarker
