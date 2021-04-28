@@ -77,13 +77,13 @@ data ListBucket = ListBucket
     deriving ( Show, Eq, Generic )
 
 data ListBucketResponse = ListBucketResponse
-    { bucket      :: Bucket -- ^ The 'Bucket' name
+    { bucket      :: Bucket
     , prefix      :: Maybe Text -- ^ The 'Object' prefix, if supplied as a query param
     , marker      :: Maybe Object
       -- ^ An 'Object' indicating where the list of 'Object's begin; 'Nothing'
       -- denotes the beginning of the list
     , nextMarker  :: Maybe Object
-      -- ^ The 'Object' that should be used as the 'marker' query param in
+      -- ^ The 'Object' that should be used as the @marker@ query param in
       -- subsequent requests
     , maxKeys     :: Int
       -- ^ Maximum number of 'ObjectInfo's to include; based on request parameter

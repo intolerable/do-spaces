@@ -46,7 +46,7 @@ import           Network.DO.Spaces.Utils
 import qualified Text.XML.Cursor         as X
 import           Text.XML.Cursor         ( ($/), (&/), (&|) )
 
--- | List all of your 'Bucket's withing the 'Region' you have configured
+-- | List all of your 'Bucket's withing the 'Network.DO.Spaces.Region' you have configured
 data ListAllBuckets = ListAllBuckets
     deriving ( Show, Eq, Generic )
 

@@ -56,6 +56,7 @@ module Network.DO.Spaces
     , AccessKey(..)
     , SecretKey(..)
     , CredentialSource(..)
+    , Profile
     , SpacesException
     , ClientException(..)
     , APIException(..)
@@ -202,7 +203,7 @@ uploadObject contentType bucket object rbody = do
     runAction KeepMetadata
               UploadObject { optionalHeaders = defaultUploadHeaders, .. }
 
--- | Initiate and complete a 'MultiPart' upload, using default 'UploadHeaders'.
+-- | Initiate and complete a multipart upload, using default 'UploadHeaders'.
 -- If a 'SpacesException' is thrown while performing the transaction, an attempt
 -- will be made to runSpaces a 'CancelMultipart' request, and the exception will be
 -- rethrown
@@ -367,7 +368,7 @@ listAllBuckets :: MonadSpaces m => m (SpacesResponse ListAllBuckets)
 listAllBuckets = runAction KeepMetadata ListAllBuckets
 
 -- | List the 'Object's of a 'Bucket', without grouping, delimiting, or limiting
--- the keys (i.e. list all 'Objects' non-hierarchically, up to the Spaces limit)
+-- the keys (i.e. list all 'Object's non-hierarchically, up to the Spaces limit)
 listBucket :: MonadSpaces m => Bucket -> m (SpacesResponse ListBucket)
 listBucket bucket = runAction KeepMetadata ListBucket { .. }
   where

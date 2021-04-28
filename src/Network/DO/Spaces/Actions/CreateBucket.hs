@@ -43,7 +43,8 @@ data CreateBucket = CreateBucket
     { bucket :: Bucket -- ^ The name of the new 'Bucket' to create
     , region :: Maybe Region
     , acl    :: Maybe CannedACL
-      -- ^ The 'CannedACL' to use; defaults to 'Private'
+      -- ^ The 'CannedACL' to use; defaults to
+      -- 'Network.DO.Spaces.Types.CannedACL.Private'
     }
     deriving ( Show, Eq, Generic )
 

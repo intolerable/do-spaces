@@ -28,6 +28,8 @@ module Network.DO.Spaces.Utils
     , showCannedACL
     , renderUploadHeaders
     , defaultUploadHeaders
+    , slugToRegion
+    , getResponseMetadata
       -- * Parsing/reading
       -- ** XML
     , xmlDocCursor
@@ -47,8 +49,6 @@ module Network.DO.Spaces.Utils
     , lookupHeader
     , readEtag
     , readContentLen
-    , getResponseMetadata
-    , slugToRegion
     ) where
 
 import           Conduit                   ( (.|), runConduit )
@@ -192,7 +192,7 @@ xmlNum :: Num a => MonadThrow m => Text -> Cursor Node -> m a
 xmlNum name c = X.forceM (xmlElemError name)
     $ c $/ X.laxElement name &/ X.content &| xmlInt
 
--- | Read a 'UTCTime' from an 'ISO8601'-formatted 'Text'
+-- | Read a 'UTCTime' from an ISO-O8601-formatted 'Text'
 xmlUTCTime :: MonadThrow m => Text -> m UTCTime
 xmlUTCTime txt = case iso8601ParseM $ T.unpack txt of
     Just t  -> return t

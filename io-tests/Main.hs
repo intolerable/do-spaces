@@ -50,7 +50,7 @@ import           Control.Monad.Catch        ( MonadCatch(catch)
 import           Control.Monad.IO.Class     ( MonadIO(liftIO) )
 
 import qualified Data.ByteString.Char8      as C
-import qualified Data.ByteString.Lazy.Char8 as LBC
+import qualified Data.ByteString.Lazy.Char8 as LC
 import           Data.Coerce                ( coerce )
 import qualified Data.Conduit.Binary        as CB
 import           Data.Generics.Labels       ()
@@ -140,7 +140,7 @@ multipart = do
     cleanup spaces bucket object =
         void . retry404 20 . runSpaces spaces $ deleteObject bucket object
 
-    body = sourceLazy $ LBC.replicate 10485760 'f'
+    body = sourceLazy $ LC.replicate 10485760 'f'
 
 objectCreateDelete :: IO ()
 objectCreateDelete = do

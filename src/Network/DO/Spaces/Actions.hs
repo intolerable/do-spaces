@@ -80,7 +80,8 @@ import qualified Text.XML.Cursor                             as X
 import           Text.XML.Cursor                             ( ($/), (&/) )
 
 -- | Run an instance of 'Action', receiving a 'ConsumedResponse'. The retention
--- of 'SpacesMetadata' can be controlled by passing a 'WithMetadata' constructor
+-- of 'Network.DO.Spaces.Types.SpacesMetadata' can be controlled by passing a
+-- 'Network.DO.Spaces.Types.WithMetadata' constructor
 runAction :: forall a m.
           (MonadSpaces m, Action m a)
           => WithMetadata

@@ -389,7 +389,7 @@ data WithMetadata = KeepMetadata | NoMetadata
 -- | A 'ConsumedResponse' with optional 'SpacesMetadata'
 data SpacesResponse a = SpacesResponse
     { result   :: ConsumedResponse a
-      -- ^ A 'Response' consumed by an 'Action' instance
+      -- ^ A 'Network.HTTP.Conduit.Response' consumed by an 'Action' instance
     , metadata :: Maybe SpacesMetadata
       -- ^ 'SpacesMetadata', the retention of which can be controlled using
       -- 'WithMetadata'
@@ -447,7 +447,7 @@ data ClientException
     = InvalidRequest Text
     | InvalidXML Text
     | ConfigurationError Text
-      -- | This includes the raw 'Response' body, read into a
+      -- | This includes the raw 'Network.HTTP.Types.Response' body, read into a
       -- lazy 'LB.ByteString'
     | HTTPStatus Status LB.ByteString
     | OtherError Text

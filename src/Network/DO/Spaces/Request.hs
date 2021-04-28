@@ -141,7 +141,7 @@ renderSubresources = C.intercalate "&" . fmap renderQueryItem . sort
     renderQueryItem (k, Nothing) = k <> "="
     renderQueryItem (k, Just v)  = k <> "=" <> v
 
--- | Generate a 'StringToSign'
+-- | Generate a t'StringToSign'
 mkStringToSign :: SpacesRequest -> StringToSign
 mkStringToSign req@SpacesRequest { .. } = StringToSign
     $ C.intercalate "\n"
@@ -155,7 +155,7 @@ mkStringToSign req@SpacesRequest { .. } = StringToSign
                       & uncompute
                     ]
 
--- | Generate a 'Signature'
+-- | Generate a t'Signature'
 mkSignature :: SpacesRequest -> StringToSign -> Signature
 mkSignature SpacesRequest { .. } str = Signature
     . B16.encode
@@ -166,7 +166,7 @@ mkSignature SpacesRequest { .. } str = Signature
     . keyedHash (fmtAmzDate time)
     $ "AWS4" <> (spaces ^. field @"secretKey" & coerce)
 
--- | Create an 'Authorization' corresponding to the required AWS v4
+-- | Create an t'Authorization' corresponding to the required AWS v4
 -- @Authorization@ header
 mkAuthorization :: SpacesRequest -> StringToSign -> Authorization
 mkAuthorization req@SpacesRequest { .. } str = Authorization
@@ -182,7 +182,7 @@ mkAuthorization req@SpacesRequest { .. } str = Authorization
 
     sig  = mkSignature req str
 
--- | Create 'Credentials' containing your 'AccessKey' and the request 'Region'
+-- | Create t'Credentials' containing your 'AccessKey' and the request 'Region'
 mkCredentials :: SpacesRequest -> Credentials
 mkCredentials SpacesRequest { .. } = Credentials
     $ C.intercalate "/"
