@@ -20,6 +20,8 @@
 -- exposed through the Spaces REST API are supported here, including CRUD operations
 -- on buckets and objects
 --
+-- See the README in this repository for more information on using this library
+--
 module Network.DO.Spaces
     ( runSpaces
     , newSpaces

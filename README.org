@@ -1,0 +1,7 @@
+#+TITLE: do-spaces
+
+* About
+  ~do-spaces~ is a Haskell library providing bindings to DigitalOcean's Spaces API, an Amazon s3-compatible object storage service.
+
+* License
+  This library is distributed under the BSD three-clause license
