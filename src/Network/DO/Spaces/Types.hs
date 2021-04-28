@@ -53,10 +53,20 @@ module Network.DO.Spaces.Types
     , SpacesMetadata(..)
     , WithMetadata(..)
     , RawResponse(..)
+    , BodyBS
     , Method(..)
     , Region(..)
     , AccessKey(..)
     , SecretKey(..)
+    , ETag
+    , CacheControl
+    , ContentDisposition
+    , ContentEncoding
+    , UserMetadata
+    , UploadHeaders(..)
+    , CORSRule(..)
+    , AllowedOrigin
+    , mkAllowedOrigin
     , Canonicalized(..)
     , Computed(..)
     , StringToSign
@@ -65,13 +75,6 @@ module Network.DO.Spaces.Types
     , Credentials
     , Authorization
     , uncompute
-    , ETag
-    , CacheControl
-    , ContentDisposition
-    , ContentEncoding
-    , UserMetadata
-    , UploadHeaders(..)
-    , BodyBS
       -- * Exceptions
     , SpacesException
     , ClientException(..)
@@ -99,6 +102,7 @@ import           Data.Data                    ( Typeable )
 import qualified Data.Generics.Product.Fields as GL
 import           Data.Ix                      ( inRange )
 import           Data.Kind                    ( Type )
+import           Data.Set                     ( Set )
 import           Data.Text                    ( Text )
 import qualified Data.Text                    as T
 import           Data.Time                    ( UTCTime )
@@ -112,7 +116,7 @@ import           Network.HTTP.Client.Conduit
                  , Request
                  , RequestBody
                  )
-import           Network.HTTP.Types           ( Header, Query )
+import           Network.HTTP.Types           ( Header, HeaderName, Query )
 import           Network.HTTP.Types.Status    ( Status )
 import           Network.Mime                 ( MimeType )
 
@@ -180,7 +184,7 @@ data Region
 -- | HTTP request methods, to avoid using @http-client@'s stringly-typed @Method@
 -- synonym
 data Method = GET | POST | PUT | DELETE | HEAD
-    deriving ( Show, Eq, Generic )
+    deriving ( Show, Eq, Generic, Ord )
 
 -- | The name of a single storage bucket
 newtype Bucket = Bucket { unBucket :: Text }
@@ -291,6 +295,26 @@ type ContentEncoding = Text
 -- requests. Each pair expands into @x-amz-meta-*@, e.g.
 -- @x-amz-meta-s3cmd-attrs: uid:1000/gname:asb...@
 type UserMetadata = [(Text, Text)]
+
+newtype AllowedOrigin = AllowedOrigin Text
+    deriving ( Show, Eq, Generic )
+
+-- | Smart constructor for 'AllowedOrigin'. Values may only contain up to one
+-- wildcard (e.g. @https://*.example.com@)
+mkAllowedOrigin :: MonadThrow m => Text -> m AllowedOrigin
+mkAllowedOrigin t
+    | T.count "*" t > 1 =
+        throwM $ OtherError "AllowedOrigin: maximum of one wildcard permitted"
+    | otherwise = undefined
+
+-- | Cross-origin resource sharing rules. A single 'AllowedOrigin' is mapped onto
+-- multiple unique 'Method's and headers
+data CORSRule = CORSRule
+    { allowedOrigin  :: AllowedOrigin
+    , allowedMethods :: Set Method
+    , allowedHeaders :: Set HeaderName
+    }
+    deriving ( Generic )
 
 -- | Represents some resource that has been canonicalized according to the
 -- Spaces/AWS v4 spec
