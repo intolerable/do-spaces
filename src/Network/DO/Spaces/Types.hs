@@ -65,8 +65,6 @@ module Network.DO.Spaces.Types
     , UserMetadata
     , UploadHeaders(..)
     , CORSRule(..)
-    , AllowedOrigin
-    , mkAllowedOrigin
     , Canonicalized(..)
     , Computed(..)
     , StringToSign
@@ -79,6 +77,7 @@ module Network.DO.Spaces.Types
     , SpacesException
     , ClientException(..)
     , APIException(..)
+    , mkCORSRule
     ) where
 
 import           Conduit                      ( ConduitT, MonadUnliftIO )
@@ -96,13 +95,15 @@ import           Control.Monad.Reader         ( MonadReader
                                               )
 
 import           Data.ByteString              ( ByteString )
+import qualified Data.ByteString.Char8        as C
 import qualified Data.ByteString.Lazy         as LB
+import qualified Data.CaseInsensitive         as CI
 import           Data.Char                    ( isAlpha, isDigit, toLower )
+import           Data.Containers.ListUtils    ( nubOrd )
 import           Data.Data                    ( Typeable )
 import qualified Data.Generics.Product.Fields as GL
 import           Data.Ix                      ( inRange )
 import           Data.Kind                    ( Type )
-import           Data.Set                     ( Set )
 import           Data.Text                    ( Text )
 import qualified Data.Text                    as T
 import           Data.Time                    ( UTCTime )
@@ -184,7 +185,7 @@ data Region
 -- | HTTP request methods, to avoid using @http-client@'s stringly-typed @Method@
 -- synonym
 data Method = GET | POST | PUT | DELETE | HEAD
-    deriving ( Show, Eq, Generic, Ord )
+    deriving ( Show, Eq, Generic, Ord, Read )
 
 -- | The name of a single storage bucket
 newtype Bucket = Bucket { unBucket :: Text }
@@ -296,25 +297,28 @@ type ContentEncoding = Text
 -- @x-amz-meta-s3cmd-attrs: uid:1000/gname:asb...@
 type UserMetadata = [(Text, Text)]
 
-newtype AllowedOrigin = AllowedOrigin Text
+-- | Cross-origin resource sharing rules
+data CORSRule = CORSRule
+    { allowedOrigin  :: Text
+    , allowedMethods :: [Method]
+    , allowedHeaders :: [HeaderName]
+    }
     deriving ( Show, Eq, Generic )
 
--- | Smart constructor for 'AllowedOrigin'. Values may only contain up to one
--- wildcard (e.g. @https://*.example.com@)
-mkAllowedOrigin :: MonadThrow m => Text -> m AllowedOrigin
-mkAllowedOrigin t
-    | T.count "*" t > 1 =
-        throwM $ OtherError "AllowedOrigin: maximum of one wildcard permitted"
-    | otherwise = undefined
-
--- | Cross-origin resource sharing rules. A single 'AllowedOrigin' is mapped onto
--- multiple unique 'Method's and headers
-data CORSRule = CORSRule
-    { allowedOrigin  :: AllowedOrigin
-    , allowedMethods :: Set Method
-    , allowedHeaders :: Set HeaderName
-    }
-    deriving ( Generic )
+-- | Smart constructor for 'CORSRule'. Ensures that both origins and header names
+-- contain a maximum of one wildcard and removes duplicates from both headers and
+-- methods
+mkCORSRule :: MonadThrow m => Text -> [Method] -> [HeaderName] -> m CORSRule
+mkCORSRule origin ms hs
+    | T.count "*" origin > 1 = throwM
+        $ OtherError "CORSRule: maximum of one wildcard permitted in origins"
+    | or ((> 1) . C.count '*' . CI.original <$> hs) = throwM
+        $ OtherError "CORSRule: maximum of one wildcard permitted in headers"
+    | otherwise = return CORSRule
+                         { allowedOrigin  = origin
+                         , allowedMethods = nubOrd ms
+                         , allowedHeaders = nubOrd hs
+                         }
 
 -- | Represents some resource that has been canonicalized according to the
 -- Spaces/AWS v4 spec
