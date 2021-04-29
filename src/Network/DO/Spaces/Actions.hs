@@ -42,6 +42,7 @@ import           Data.Time                                   ( getCurrentTime
 import           Network.DO.Spaces.Actions.CopyObject        as M
 import           Network.DO.Spaces.Actions.CreateBucket      as M
 import           Network.DO.Spaces.Actions.DeleteBucket      as M
+import           Network.DO.Spaces.Actions.DeleteBucketCORS  as M
 import           Network.DO.Spaces.Actions.DeleteObject      as M
 import           Network.DO.Spaces.Actions.GetBucketCORS     as M
 import           Network.DO.Spaces.Actions.GetBucketLocation as M

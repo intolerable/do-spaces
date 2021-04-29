@@ -65,6 +65,7 @@ module Network.DO.Spaces
     , ClientException(..)
     , APIException(..)
     , getBucketCORS
+    , deleteBucketCORS
     ) where
 
 import           Conduit
@@ -423,8 +424,14 @@ listBucketRec bucket = go mempty Nothing
                 | otherwise -> return $ os <> objects
             Nothing -> return $ os <> objects
 
+-- | Get the 'CORSRule's configured for a given 'Bucket'
 getBucketCORS :: MonadSpaces m => Bucket -> m (SpacesResponse GetBucketCORS)
 getBucketCORS bucket = runAction KeepMetadata $ GetBucketCORS { .. }
+
+-- | Delete the existing configured 'CORSRule's for a given 'Bucket'
+deleteBucketCORS
+    :: MonadSpaces m => Bucket -> m (SpacesResponse DeleteBucketCORS)
+deleteBucketCORS bucket = runAction KeepMetadata $ DeleteBucketCORS { .. }
 --
 -- $conv
 -- The following are convenience actions. In most cases, each action is the same

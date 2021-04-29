@@ -67,6 +67,7 @@ library
     Network.DO.Spaces.Actions.CopyObject
     Network.DO.Spaces.Actions.CreateBucket
     Network.DO.Spaces.Actions.DeleteBucket
+    Network.DO.Spaces.Actions.DeleteBucketCORS
     Network.DO.Spaces.Actions.DeleteObject
     Network.DO.Spaces.Actions.GetBucketCORS
     Network.DO.Spaces.Actions.GetBucketLocation
