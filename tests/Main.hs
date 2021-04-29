@@ -1,4 +1,5 @@
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeApplications #-}
 
@@ -9,13 +10,15 @@ import           Conduit                   ( sourceLazy, withSourceFile )
 
 import qualified Data.ByteString.Char8     as C
 import qualified Data.CaseInsensitive      as CI
-import           Data.Foldable             ( for_ )
-import           Data.Function             ( (&) )
+import           Data.Foldable             ( Foldable(toList), for_ )
+import           Data.Generics.Labels      ()
 import           Data.Maybe                ( isJust )
 import qualified Data.Sequence             as S
 import qualified Data.Text                 as T
 import           Data.Time                 ( UTCTime )
 import           Data.Time.Format.ISO8601  ( iso8601ParseM )
+
+import           Lens.Micro
 
 import           Network.DO.Spaces         ( newSpaces )
 import           Network.DO.Spaces.Actions
@@ -24,13 +27,6 @@ import           Network.DO.Spaces.Types
 import           Network.HTTP.Types        ( mkStatus )
 
 import           Test.Hspec
-                 ( describe
-                 , hspec
-                 , it
-                 , shouldBe
-                 , shouldSatisfy
-                 , shouldThrow
-                 )
 
 main :: IO ()
 main = sequence_ [ requests
@@ -43,6 +39,7 @@ main = sequence_ [ requests
                  , beginMultipartResponse
                  , listPartsResponse
                  , bucketName
+                 , bucketCORS
                  ]
 
 requests :: IO ()
@@ -383,3 +380,27 @@ bucketName = hspec . describe "Network.DO.Spaces.Types.mkBucket" $ do
   where
     matchErr (OtherError _) = True
     matchErr _              = False
+
+bucketCORS :: IO ()
+bucketCORS = do
+    sp <- testSpaces
+    cors <- withSourceFile "./tests/data/get-bucket-cors.xml" $ \body -> do
+        let headers = mempty
+            raw     = RawResponse { .. }
+        runSpacesT (consumeResponse @_ @GetBucketCORS raw) sp
+
+    hspec
+        . describe "Network.DO.Spaces.Actions.GetBucketCORS"
+        . it "parses the response correctly"
+        $ (cors ^. #rules & toList)
+        `shouldBe` [ CORSRule
+                     { allowedOrigin  = "http://example.com"
+                     , allowedMethods = [ PUT, DELETE, POST ]
+                     , allowedHeaders = [ "*" ]
+                     }
+                   , CORSRule
+                     { allowedOrigin  = "*"
+                     , allowedMethods = [ GET ]
+                     , allowedHeaders = mempty
+                     }
+                   ]

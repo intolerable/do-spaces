@@ -59,9 +59,12 @@ module Network.DO.Spaces
     , SecretKey(..)
     , CredentialSource(..)
     , Profile
+    , CORSRule
+    , mkCORSRule
     , SpacesException
     , ClientException(..)
     , APIException(..)
+    , getBucketCORS
     ) where
 
 import           Conduit
@@ -419,6 +422,10 @@ listBucketRec bucket = go mempty Nothing
                 | isTruncated -> go (os <> objects) nextMarker
                 | otherwise -> return $ os <> objects
             Nothing -> return $ os <> objects
+
+getBucketCORS :: MonadSpaces m => Bucket -> m (SpacesResponse GetBucketCORS)
+getBucketCORS bucket = runAction KeepMetadata $ GetBucketCORS { .. }
+--
 -- $conv
 -- The following are convenience actions. In most cases, each action is the same
 -- as applying 'runAction' to a type that implements the 'Action' typeclass.
