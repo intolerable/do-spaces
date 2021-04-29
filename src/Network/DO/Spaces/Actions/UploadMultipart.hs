@@ -67,6 +67,7 @@ import           Network.DO.Spaces.Utils
                  , isTruncP
                  , lastModifiedP
                  , lookupHeader
+                 , mkNode
                  , objectP
                  , quote
                  , readEtag
@@ -235,9 +236,6 @@ instance MonadSpaces m => Action m CompleteMultipart where
                         [ mkNode "PartNumber" (tshow n)
                         , mkNode "ETag" (quote etag)
                         ]
-
-        mkNode name nc =
-            X.NodeElement $ X.Element name mempty [ X.NodeContent nc ]
 
     consumeResponse raw = do
         cursor <- xmlDocCursor raw

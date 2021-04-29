@@ -30,6 +30,7 @@ module Network.DO.Spaces.Utils
     , defaultUploadHeaders
     , slugToRegion
     , getResponseMetadata
+    , mkNode
       -- * Parsing/reading
       -- ** XML
     , xmlDocCursor
@@ -271,3 +272,6 @@ getResponseMetadata status RawResponse { .. } = SpacesMetadata { .. }
         eitherToMaybe . T.decodeUtf8' =<< lookup "x-amz-request-id" headers
 
     date      = parseAmzTime . C.unpack =<< lookup "Date" headers
+
+mkNode :: X.Name -> Text -> Node
+mkNode name nc = X.NodeElement $ X.Element name mempty [ X.NodeContent nc ]

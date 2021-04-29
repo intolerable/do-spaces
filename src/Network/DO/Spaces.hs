@@ -46,6 +46,9 @@ module Network.DO.Spaces
     , listBucket
     , listBucketGrouped
     , listBucketRec
+    , getBucketCORS
+    , deleteBucketCORS
+    , setBucketCORS
       -- * Re-exports
     , Spaces
     , SpacesResponse
@@ -64,8 +67,6 @@ module Network.DO.Spaces
     , SpacesException
     , ClientException(..)
     , APIException(..)
-    , getBucketCORS
-    , deleteBucketCORS
     ) where
 
 import           Conduit
@@ -427,6 +428,13 @@ listBucketRec bucket = go mempty Nothing
 -- | Get the 'CORSRule's configured for a given 'Bucket'
 getBucketCORS :: MonadSpaces m => Bucket -> m (SpacesResponse GetBucketCORS)
 getBucketCORS bucket = runAction KeepMetadata $ GetBucketCORS { .. }
+
+-- | Set 'CORSRule's for a given 'Bucket'
+setBucketCORS :: MonadSpaces m
+              => Bucket
+              -> [CORSRule]
+              -> m (SpacesResponse SetBucketCORS)
+setBucketCORS bucket rules = runAction KeepMetadata $ SetBucketCORS { .. }
 
 -- | Delete the existing configured 'CORSRule's for a given 'Bucket'
 deleteBucketCORS
