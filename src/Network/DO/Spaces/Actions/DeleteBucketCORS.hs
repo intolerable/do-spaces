@@ -9,7 +9,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 -- |
--- Module      : Network.DO.Spaces.Actions.GetBucketCORS
+-- Module      : Network.DO.Spaces.Actions.DeleteBucketCORS
 -- Copyright   : (c) 2021 Rory Tyler Hayford
 -- License     : BSD-3-Clause
 -- Maintainer  : rory.hayford@protonmail.com
