@@ -65,6 +65,10 @@ module Network.DO.Spaces.Types
     , UserMetadata
     , UploadHeaders(..)
     , CORSRule(..)
+    , mkCORSRule
+    , Grant(..)
+    , Permission(..)
+    , Grantee(..)
     , Canonicalized(..)
     , Computed(..)
     , StringToSign
@@ -77,7 +81,6 @@ module Network.DO.Spaces.Types
     , SpacesException
     , ClientException(..)
     , APIException(..)
-    , mkCORSRule
     ) where
 
 import           Conduit                      ( ConduitT, MonadUnliftIO )
@@ -303,6 +306,21 @@ data CORSRule = CORSRule
     , allowedMethods :: [Method]
     , allowedHeaders :: [HeaderName]
     }
+    deriving ( Show, Eq, Generic )
+
+-- | An individual access grant
+data Grant = Grant { permission :: Permission, grantee :: Grantee }
+    deriving ( Show, Eq, Generic )
+
+-- | Access grant level; Spaces currently only supports these two levels
+data Permission = ReadOnly | FullControl
+    deriving ( Show, Eq, Generic, Ord )
+
+-- | Information about who an access grant applies to
+data Grantee
+    = Group -- ^ Nominally contains a URI value, but Spaces only supports a
+      -- single value for group access grants
+    | CanonicalOwner Owner
     deriving ( Show, Eq, Generic )
 
 -- | Smart constructor for 'CORSRule'. Ensures that both origins and header names
