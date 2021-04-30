@@ -40,6 +40,7 @@ main = sequence_ [ requests
                  , listPartsResponse
                  , bucketName
                  , bucketCORS
+                 , bucketACLs
                  ]
 
 requests :: IO ()
@@ -402,5 +403,25 @@ bucketCORS = do
                      { allowedOrigin  = "*"
                      , allowedMethods = [ GET ]
                      , allowedHeaders = mempty
+                     }
+                   ]
+
+bucketACLs :: IO ()
+bucketACLs = do
+    sp <- testSpaces
+    acls <- withSourceFile "./tests/data/get-bucket-acls.xml" $ \body -> do
+        let headers = mempty
+            raw     = RawResponse { .. }
+        runSpacesT (consumeResponse @_ @GetBucketACLs raw) sp
+
+    hspec
+        . describe "Network.DO.Spaces.Actions.GetBucketACLs"
+        . it "parses the response correctly"
+        $ (acls ^. #accessControlList)
+        `shouldBe` [ Grant { permission = ReadOnly, grantee = Group }
+                   , Grant
+                     { permission = FullControl
+                     , grantee    = CanonicalUser (Owner (OwnerID 6174283)
+                                                         (OwnerID 6174283))
                      }
                    ]

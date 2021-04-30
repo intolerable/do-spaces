@@ -70,6 +70,7 @@ library
     Network.DO.Spaces.Actions.DeleteBucketCORS
     Network.DO.Spaces.Actions.DeleteObject
     Network.DO.Spaces.Actions.GetBucketCORS
+    Network.DO.Spaces.Actions.GetBucketACLs
     Network.DO.Spaces.Actions.GetBucketLocation
     Network.DO.Spaces.Actions.GetObject
     Network.DO.Spaces.Actions.GetObjectInfo

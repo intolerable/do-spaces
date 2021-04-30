@@ -18,7 +18,7 @@
 -- storage platform. This module exports actions to create a 'Spaces' client
 -- configuration as well as several convenience actions. Most of the transactions
 -- exposed through the Spaces REST API are supported here, including CRUD operations
--- on buckets and objects
+-- on buckets and objects, bucket CORS configuration, and manipulating ACLs.
 --
 -- See the README in this repository for more information on using this library
 --
@@ -49,6 +49,7 @@ module Network.DO.Spaces
     , getBucketCORS
     , deleteBucketCORS
     , setBucketCORS
+    , getBucketACLs
       -- * Re-exports
     , Spaces
     , SpacesResponse
@@ -440,6 +441,10 @@ setBucketCORS bucket rules = runAction KeepMetadata $ SetBucketCORS { .. }
 deleteBucketCORS
     :: MonadSpaces m => Bucket -> m (SpacesResponse DeleteBucketCORS)
 deleteBucketCORS bucket = runAction KeepMetadata $ DeleteBucketCORS { .. }
+
+-- | Get a 'Bucket'\'s Access Control Lists
+getBucketACLs :: MonadSpaces m => Bucket -> m (SpacesResponse GetBucketACLs)
+getBucketACLs bucket = runAction KeepMetadata $ GetBucketACLs { .. }
 --
 -- $conv
 -- The following are convenience actions. In most cases, each action is the same

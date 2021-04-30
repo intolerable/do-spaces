@@ -31,6 +31,7 @@ module Network.DO.Spaces.Utils
     , slugToRegion
     , getResponseMetadata
     , mkNode
+    , showPermission
       -- * Parsing/reading
       -- ** XML
     , xmlDocCursor
@@ -141,6 +142,11 @@ showCannedACL = \case
     Private    -> "private"
     PublicRead -> "public-read"
 
+showPermission :: IsString a => Permission -> a
+showPermission = \case
+    ReadOnly    -> "READ"
+    FullControl -> "FULL_CONTROL"
+
 handleMaybe :: MonadCatch m => (a -> m b) -> a -> m (Maybe b)
 handleMaybe g x = handleAll (\_ -> return Nothing) (Just <$> g x)
 
@@ -160,6 +166,10 @@ renderUploadHeaders UploadHeaders { .. } = second T.encodeUtf8
                   , ("Content-Encoding", ) <$> contentEncoding
                   ]
     <> (first (CI.mk . T.encodeUtf8 . ("x-amz-meta-" <>)) <$> metadata)
+
+-- | Create an XML 'Node'
+mkNode :: X.Name -> Text -> Node
+mkNode name nc = X.NodeElement $ X.Element name mempty [ X.NodeContent nc ]
 
 xmlDocCursor :: (MonadIO m, MonadThrow m) => RawResponse m -> m X.Cursor
 xmlDocCursor RawResponse { .. } = X.fromDocument
@@ -272,6 +282,3 @@ getResponseMetadata status RawResponse { .. } = SpacesMetadata { .. }
         eitherToMaybe . T.decodeUtf8' =<< lookup "x-amz-request-id" headers
 
     date      = parseAmzTime . C.unpack =<< lookup "Date" headers
-
-mkNode :: X.Name -> Text -> Node
-mkNode name nc = X.NodeElement $ X.Element name mempty [ X.NodeContent nc ]

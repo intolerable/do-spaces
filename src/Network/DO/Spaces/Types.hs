@@ -320,7 +320,7 @@ data Permission = ReadOnly | FullControl
 data Grantee
     = Group -- ^ Nominally contains a URI value, but Spaces only supports a
       -- single value for group access grants
-    | CanonicalOwner Owner
+    | CanonicalUser Owner
     deriving ( Show, Eq, Generic )
 
 -- | Smart constructor for 'CORSRule'. Ensures that both origins and header names
