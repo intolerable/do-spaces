@@ -38,6 +38,7 @@ module Network.DO.Spaces
     , copyObjectWithin
     , overwriteObject
     , deleteObject
+    , getObjectACLs
       -- ** Bucket operations
     , createBucket
     , deleteBucket
@@ -353,6 +354,11 @@ overwriteObject srcBucket srcObject = runAction KeepMetadata CopyObject { .. }
 deleteObject
     :: MonadSpaces m => Bucket -> Object -> m (SpacesResponse DeleteObject)
 deleteObject bucket object = runAction KeepMetadata DeleteObject { .. }
+
+-- | Get an 'Object'\'s Access Control Lists
+getObjectACLs
+    :: MonadSpaces m => Bucket -> Object -> m (SpacesResponse GetObjectACLs)
+getObjectACLs bucket object = runAction KeepMetadata GetObjectACLs { .. }
 
 -- | Create a new 'Bucket'
 createBucket :: MonadSpaces m

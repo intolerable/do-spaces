@@ -73,6 +73,7 @@ library
     Network.DO.Spaces.Actions.GetBucketCORS
     Network.DO.Spaces.Actions.GetBucketLocation
     Network.DO.Spaces.Actions.GetObject
+    Network.DO.Spaces.Actions.GetObjectACLs
     Network.DO.Spaces.Actions.GetObjectInfo
     Network.DO.Spaces.Actions.ListAllBuckets
     Network.DO.Spaces.Actions.ListBucket

@@ -342,13 +342,15 @@ writeACLSetter r = X.renderLBS X.def $ X.Document prologue root mempty
                     ]
 
     granteeNode = \case
-        CanonicalUser o -> X.NodeElement
+        CanonicalUser owner -> X.NodeElement
             $ X.Element "Grantee"
                         (granteeAttrs "CanonicalUser")
                         [ mkNode "ID"
-                                 (o ^. field @"id'" & coerce @_ @Int & tshow)
+                                 (owner ^. field @"id'"
+                                  & coerce @_ @Int
+                                  & tshow)
                         ]
-        Group           -> X.NodeElement
+        Group               -> X.NodeElement
             $ X.Element "Grantee"
                         (granteeAttrs "Group")
                         [ mkNode "URI"

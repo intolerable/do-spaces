@@ -48,6 +48,7 @@ import           Network.DO.Spaces.Actions.GetBucketACLs     as M
 import           Network.DO.Spaces.Actions.GetBucketCORS     as M
 import           Network.DO.Spaces.Actions.GetBucketLocation as M
 import           Network.DO.Spaces.Actions.GetObject         as M
+import           Network.DO.Spaces.Actions.GetObjectACLs     as M
 import           Network.DO.Spaces.Actions.GetObjectInfo     as M
 import           Network.DO.Spaces.Actions.ListAllBuckets    as M
 import           Network.DO.Spaces.Actions.ListBucket        as M
