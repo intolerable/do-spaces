@@ -51,7 +51,7 @@ data CreateBucket = CreateBucket
 type CreateBucketResponse = ()
 
 instance MonadSpaces m => Action m CreateBucket where
-    type (ConsumedResponse CreateBucket) = CreateBucketResponse
+    type ConsumedResponse CreateBucket = CreateBucketResponse
 
     buildRequest CreateBucket { .. } = do
         spaces <- ask

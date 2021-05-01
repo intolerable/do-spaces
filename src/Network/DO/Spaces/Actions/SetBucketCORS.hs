@@ -53,7 +53,7 @@ data SetBucketCORS = SetBucketCORS { bucket :: Bucket, rules :: [CORSRule] }
 type SetBucketCORSResponse = ()
 
 instance MonadSpaces m => Action m SetBucketCORS where
-    type (ConsumedResponse SetBucketCORS) = SetBucketCORSResponse
+    type ConsumedResponse SetBucketCORS = SetBucketCORSResponse
 
     buildRequest SetBucketCORS { .. } = do
         spaces <- ask

@@ -203,7 +203,7 @@ data CompleteMultipartResponse = CompleteMultipartResponse
     deriving ( Show, Eq, Generic )
 
 instance MonadSpaces m => Action m CompleteMultipart where
-    type (ConsumedResponse CompleteMultipart) = CompleteMultipartResponse
+    type ConsumedResponse CompleteMultipart = CompleteMultipartResponse
 
     buildRequest CompleteMultipart { .. } = do
         spaces <- ask

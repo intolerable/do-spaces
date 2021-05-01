@@ -43,7 +43,7 @@ data DeleteBucketCORS = DeleteBucketCORS { bucket :: Bucket }
 type DeleteBucketCORSResponse = ()
 
 instance MonadSpaces m => Action m DeleteBucketCORS where
-    type (ConsumedResponse DeleteBucketCORS) = DeleteBucketCORSResponse
+    type ConsumedResponse DeleteBucketCORS = DeleteBucketCORSResponse
 
     buildRequest DeleteBucketCORS { .. } = do
         spaces <- ask

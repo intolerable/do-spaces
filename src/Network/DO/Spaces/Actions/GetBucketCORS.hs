@@ -56,7 +56,7 @@ data GetBucketCORSResponse = GetBucketCORSResponse { rules :: Seq CORSRule }
     deriving ( Show, Eq, Generic )
 
 instance MonadSpaces m => Action m GetBucketCORS where
-    type (ConsumedResponse GetBucketCORS) = GetBucketCORSResponse
+    type ConsumedResponse GetBucketCORS = GetBucketCORSResponse
 
     buildRequest GetBucketCORS { .. } = do
         spaces <- ask

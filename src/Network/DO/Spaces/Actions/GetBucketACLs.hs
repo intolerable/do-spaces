@@ -44,7 +44,7 @@ data GetBucketACLs = GetBucketACLs { bucket :: Bucket }
 type GetBucketACLsResponse = ACLResponse
 
 instance MonadSpaces m => Action m GetBucketACLs where
-    type (ConsumedResponse GetBucketACLs) = GetBucketACLsResponse
+    type ConsumedResponse GetBucketACLs = GetBucketACLsResponse
 
     buildRequest GetBucketACLs { .. } = do
         spaces <- ask

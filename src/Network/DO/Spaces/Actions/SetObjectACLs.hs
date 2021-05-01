@@ -54,7 +54,7 @@ data SetObjectACLs = SetObjectACLs
 type SetObjectACLsResponse = ()
 
 instance MonadSpaces m => Action m SetObjectACLs where
-    type (ConsumedResponse SetObjectACLs) = SetObjectACLsResponse
+    type ConsumedResponse SetObjectACLs = SetObjectACLsResponse
 
     buildRequest soa@SetObjectACLs { .. } = do
         spaces <- ask

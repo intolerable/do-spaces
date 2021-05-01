@@ -40,7 +40,7 @@ data DeleteObject = DeleteObject { bucket :: Bucket, object :: Object }
 type DeleteObjectResponse = ()
 
 instance MonadSpaces m => Action m DeleteObject where
-    type (ConsumedResponse DeleteObject) = DeleteObjectResponse
+    type ConsumedResponse DeleteObject = DeleteObjectResponse
 
     buildRequest DeleteObject { .. } = do
         spaces <- ask

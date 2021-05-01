@@ -51,7 +51,7 @@ data SetBucketACLs = SetBucketACLs
 type SetBucketACLsResponse = ()
 
 instance MonadSpaces m => Action m SetBucketACLs where
-    type (ConsumedResponse SetBucketACLs) = SetBucketACLsResponse
+    type ConsumedResponse SetBucketACLs = SetBucketACLsResponse
 
     buildRequest sba@SetBucketACLs { .. } = do
         spaces <- ask
