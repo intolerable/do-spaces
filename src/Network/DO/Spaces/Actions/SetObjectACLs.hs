@@ -10,16 +10,16 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 -- |
--- Module      : Network.DO.Spaces.Actions.SetBucketACLs
+-- Module      : Network.DO.Spaces.Actions.SetObjectACLs
 -- Copyright   : (c) 2021 Rory Tyler Hayford
 -- License     : BSD-3-Clause
 -- Maintainer  : rory.hayford@protonmail.com
 -- Stability   : experimental
 -- Portability : GHC
 --
-module Network.DO.Spaces.Actions.SetBucketACLs
-    ( SetBucketACLs(..)
-    , SetBucketACLsResponse
+module Network.DO.Spaces.Actions.SetObjectACLs
+    ( SetObjectACLs(..)
+    , SetObjectACLsResponse
     ) where
 
 import           Control.Monad.Reader        ( MonadReader(ask) )
@@ -34,6 +34,7 @@ import           Network.DO.Spaces.Types
                  , Grant(..)
                  , Method(PUT)
                  , MonadSpaces
+                 , Object
                  , Owner
                  , SpacesRequestBuilder(..)
                  )
@@ -41,28 +42,30 @@ import           Network.DO.Spaces.Utils     ( writeACLSetter )
 import           Network.HTTP.Client.Conduit ( RequestBody(RequestBodyLBS) )
 import qualified Network.HTTP.Types          as H
 
-data SetBucketACLs = SetBucketACLs
+-- | Get the full Access Control List associated with a 'Bucket'
+data SetObjectACLs = SetObjectACLs
     { bucket :: Bucket
+    , object :: Object
+    , owner  :: Owner -- ^ The object owner
     , acls   :: [Grant]
-    , owner  :: Owner -- ^ The bucket owner
     }
     deriving ( Show, Eq, Generic )
 
-type SetBucketACLsResponse = ()
+type SetObjectACLsResponse = ()
 
-instance MonadSpaces m => Action m SetBucketACLs where
-    type (ConsumedResponse SetBucketACLs) = SetBucketACLsResponse
+instance MonadSpaces m => Action m SetObjectACLs where
+    type (ConsumedResponse SetObjectACLs) = SetObjectACLsResponse
 
-    buildRequest sba@SetBucketACLs { .. } = do
+    buildRequest soa@SetObjectACLs { .. } = do
         spaces <- ask
         return SpacesRequestBuilder
                { bucket         = Just bucket
+               , object         = Just object
                , method         = Just PUT
-               , object         = Nothing
+               , body           = Just . RequestBodyLBS $ writeACLSetter soa
                , overrideRegion = Nothing
                , queryString    = Nothing
                , headers        = mempty
-               , body           = Just . RequestBodyLBS $ writeACLSetter sba
                , subresources   = Just
                      $ H.toQuery [ ( "acl" :: ByteString
                                    , Nothing :: Maybe ByteString

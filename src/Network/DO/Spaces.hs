@@ -39,6 +39,7 @@ module Network.DO.Spaces
     , overwriteObject
     , deleteObject
     , getObjectACLs
+    , setObjectACLs
       -- ** Bucket operations
     , createBucket
     , deleteBucket
@@ -359,6 +360,16 @@ deleteObject bucket object = runAction KeepMetadata DeleteObject { .. }
 getObjectACLs
     :: MonadSpaces m => Bucket -> Object -> m (SpacesResponse GetObjectACLs)
 getObjectACLs bucket object = runAction KeepMetadata GetObjectACLs { .. }
+
+-- | Set an 'Object'\'s Access Control Lists
+setObjectACLs :: MonadSpaces m
+              => Bucket
+              -> Object
+              -> Owner
+              -> [Grant]
+              -> m (SpacesResponse SetObjectACLs)
+setObjectACLs bucket object owner acls =
+    runAction KeepMetadata SetObjectACLs { .. }
 
 -- | Create a new 'Bucket'
 createBucket :: MonadSpaces m
