@@ -1,4 +1,8 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
+
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
+
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -14,7 +18,6 @@
 -- Portability : GHC
 --
 -- Small utilities
---
 module Network.DO.Spaces.Utils
     ( -- * General utilities
       tshow
@@ -46,6 +49,8 @@ module Network.DO.Spaces.Utils
     , etagP
     , ownerP
     , lastModifiedP
+    , aclP
+    , writeACLSetter
       -- ** Response headers
     , lookupObjectMetadata
     , lookupHeader
@@ -72,7 +77,10 @@ import qualified Data.CaseInsensitive      as CI
 import           Data.Char                 ( toLower )
 import           Data.Coerce               ( coerce )
 import           Data.Either.Extra         ( eitherToMaybe )
-import           Data.Generics.Product     ( HasField(field) )
+import           Data.Generics.Product     ( HasField'(field')
+                                           , HasField(field)
+                                           )
+import qualified Data.Map                  as M
 import           Data.Maybe                ( catMaybes, listToMaybe )
 import           Data.String               ( IsString )
 import           Data.Text                 ( Text )
@@ -85,7 +93,7 @@ import           Data.Time
                  )
 import           Data.Time.Format.ISO8601  ( iso8601ParseM )
 
-import           Lens.Micro                ( (^.) )
+import           Lens.Micro                ( (&), (^.) )
 
 import           Network.DO.Spaces.Types
 import           Network.HTTP.Conduit
@@ -263,6 +271,97 @@ readEtag = MaybeT . return . fmap unquote . eitherToMaybe . T.decodeUtf8'
 -- | Transform a 'Header' value into an 'Int' (for @Content-Length@)
 readContentLen :: Monad m => ByteString -> MaybeT m Int
 readContentLen = MaybeT . return . readMaybe @Int . C.unpack
+
+aclP :: MonadThrow m => Cursor Node -> m ACLResponse
+aclP cursor = do
+    owner <- X.forceM (xmlElemError "Owner")
+        $ cursor $/ X.laxElement "Owner" &| ownerP
+    accessControlList <- X.force (xmlElemError "AccessControlList")
+        $ cursor $/ X.laxElement "AccessControlList" &| grantsP
+    return ACLResponse { .. }
+  where
+    grantsP c = X.forceM (xmlElemError "Grant") . sequence
+        $ c $/ X.laxElement "Grant" &| grantP
+
+    grantP c = do
+        permission <- X.forceM (xmlElemError "Permission")
+            $ c $/ X.laxElement "Permission" &/ X.content &| readPerm
+        grantee <- X.forceM (xmlElemError "Grantee")
+            $ c $/ X.laxElement "Grantee" &| granteeP
+        return Grant { .. }
+      where
+        readPerm = \case
+            "FULL_CONTROL" -> return FullControl
+            "READ"         -> return ReadOnly
+            _              ->
+                throwM $ InvalidXML "Unrecognized ACL Permission"
+
+    granteeP c = case X.node c of
+        X.NodeElement (X.Element _ as _) -> case M.lookup typeName as of
+            Just "Group" -> return Group
+            Just "CanonicalUser" -> CanonicalUser <$> ownerP c
+            _ -> throwM $ InvalidXML "Invalid ACL Grantee type"
+        _ -> throwM $ InvalidXML "Invalid ACL Grantee"
+      where
+        typeName = X.Name "type"
+                          (Just "http://www.w3.org/2001/XMLSchema-instance")
+                          (Just "xsi")
+
+writeACLSetter :: (HasField' "owner" r Owner, HasField' "acls" r [Grant])
+               => r
+               -> LB.ByteString
+writeACLSetter r = X.renderLBS X.def $ X.Document prologue root mempty
+  where
+    prologue = X.Prologue mempty Nothing mempty
+
+    root = X.Element policyName mempty nodes
+      where
+        policyName = X.Name "AccessControlPolicy"
+                            (Just "http://s3.amazonaws.com/doc/2006-03-01/")
+                            Nothing
+
+    nodes = [ X.NodeElement
+              $ X.Element "Owner"
+                          mempty
+                          [ mkNode "ID"
+                                   (r ^. field' @"owner" . field @"id'"
+                                    & coerce @_ @Int
+                                    & tshow)
+                          ]
+            , X.NodeElement
+              $ X.Element "AccessControlList"
+                          mempty
+                          (aclNode <$> r ^. field' @"acls")
+            ]
+
+    aclNode Grant { .. } = X.NodeElement
+        $ X.Element "Grant"
+                    mempty
+                    [ granteeNode grantee
+                    , mkNode "Permission" (showPermission permission)
+                    ]
+
+    granteeNode = \case
+        CanonicalUser o -> X.NodeElement
+            $ X.Element "Grantee"
+                        (granteeAttrs "CanonicalUser")
+                        [ mkNode "ID"
+                                 (o ^. field @"id'" & coerce @_ @Int & tshow)
+                        ]
+        Group           -> X.NodeElement
+            $ X.Element "Grantee"
+                        (granteeAttrs "Group")
+                        [ mkNode "URI"
+                                 "http://acs.amazonaws.com/groups/global/AllUsers"
+                        ]
+      where
+        granteeAttrs ty =
+            M.fromList [ ( X.Name "type"
+                                  (Just "http://www.w3.org/2001/XMLSchema-instance")
+                                  (Just "xsi")
+                         , ty
+                         )
+                       ]
 
 defaultUploadHeaders :: UploadHeaders
 defaultUploadHeaders = UploadHeaders

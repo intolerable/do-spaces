@@ -51,6 +51,7 @@ import           Network.DO.Spaces.Actions.GetObject         as M
 import           Network.DO.Spaces.Actions.GetObjectInfo     as M
 import           Network.DO.Spaces.Actions.ListAllBuckets    as M
 import           Network.DO.Spaces.Actions.ListBucket        as M
+import           Network.DO.Spaces.Actions.SetBucketACLs     as M
 import           Network.DO.Spaces.Actions.SetBucketCORS     as M
 import           Network.DO.Spaces.Actions.UploadMultipart   as M
 import           Network.DO.Spaces.Actions.UploadObject      as M

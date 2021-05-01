@@ -50,6 +50,7 @@ module Network.DO.Spaces
     , deleteBucketCORS
     , setBucketCORS
     , getBucketACLs
+    , setBucketACLs
       -- * Re-exports
     , Spaces
     , SpacesResponse
@@ -445,6 +446,21 @@ deleteBucketCORS bucket = runAction KeepMetadata $ DeleteBucketCORS { .. }
 -- | Get a 'Bucket'\'s Access Control Lists
 getBucketACLs :: MonadSpaces m => Bucket -> m (SpacesResponse GetBucketACLs)
 getBucketACLs bucket = runAction KeepMetadata $ GetBucketACLs { .. }
+
+-- | Set a 'Bucket'\'s Access Control Lists. Spaces only allows a limited subset
+-- of s3 ACLs at the moment. It may be preferable to use a 'CannedACL' when
+-- creating new resources rather than using this action, which is provided
+-- for the sake of completeness.
+--
+-- Note that to allow public read-only access to your bucket, you /must/
+-- simultaneously set full owner control.
+setBucketACLs :: MonadSpaces m
+              => Bucket
+              -> [Grant]
+              -> Owner
+              -> m (SpacesResponse SetBucketACLs)
+setBucketACLs bucket acls owner =
+    runAction KeepMetadata $ SetBucketACLs { .. }
 --
 -- $conv
 -- The following are convenience actions. In most cases, each action is the same

@@ -69,13 +69,14 @@ library
     Network.DO.Spaces.Actions.DeleteBucket
     Network.DO.Spaces.Actions.DeleteBucketCORS
     Network.DO.Spaces.Actions.DeleteObject
-    Network.DO.Spaces.Actions.GetBucketCORS
     Network.DO.Spaces.Actions.GetBucketACLs
+    Network.DO.Spaces.Actions.GetBucketCORS
     Network.DO.Spaces.Actions.GetBucketLocation
     Network.DO.Spaces.Actions.GetObject
     Network.DO.Spaces.Actions.GetObjectInfo
     Network.DO.Spaces.Actions.ListAllBuckets
     Network.DO.Spaces.Actions.ListBucket
+    Network.DO.Spaces.Actions.SetBucketACLs
     Network.DO.Spaces.Actions.SetBucketCORS
     Network.DO.Spaces.Actions.UploadMultipart
     Network.DO.Spaces.Actions.UploadObject

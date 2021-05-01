@@ -69,6 +69,7 @@ module Network.DO.Spaces.Types
     , Grant(..)
     , Permission(..)
     , Grantee(..)
+    , ACLResponse(..)
     , Canonicalized(..)
     , Computed(..)
     , StringToSign
@@ -321,6 +322,10 @@ data Grantee
     = Group -- ^ Nominally contains a URI value, but Spaces only supports a
       -- single value for group access grants
     | CanonicalUser Owner
+    deriving ( Show, Eq, Generic )
+
+data ACLResponse =
+    ACLResponse { owner :: Owner, accessControlList :: [Grant] }
     deriving ( Show, Eq, Generic )
 
 -- | Smart constructor for 'CORSRule'. Ensures that both origins and header names

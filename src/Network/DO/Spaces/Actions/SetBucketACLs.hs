@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -9,53 +10,59 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 -- |
--- Module      : Network.DO.Spaces.Actions.GetBucketACLs
+-- Module      : Network.DO.Spaces.Actions.SetBucketACLs
 -- Copyright   : (c) 2021 Rory Tyler Hayford
 -- License     : BSD-3-Clause
 -- Maintainer  : rory.hayford@protonmail.com
 -- Stability   : experimental
 -- Portability : GHC
 --
-module Network.DO.Spaces.Actions.GetBucketACLs
-    ( GetBucketACLs(..)
-    , GetBucketACLsResponse
+module Network.DO.Spaces.Actions.SetBucketACLs
+    ( SetBucketACLs(..)
+    , SetBucketACLsResponse
     ) where
 
-import           Control.Monad.Reader    ( MonadReader(ask) )
+import           Control.Monad.Reader        ( MonadReader(ask) )
 
-import           Data.ByteString         ( ByteString )
+import           Data.ByteString             ( ByteString )
 
-import           GHC.Generics            ( Generic )
+import           GHC.Generics                ( Generic )
 
 import           Network.DO.Spaces.Types
-                 ( ACLResponse
-                 , Action(..)
+                 ( Action(..)
                  , Bucket
+                 , Grant(..)
+                 , Method(PUT)
                  , MonadSpaces
+                 , Owner
                  , SpacesRequestBuilder(..)
                  )
-import           Network.DO.Spaces.Utils ( aclP, xmlDocCursor )
-import qualified Network.HTTP.Types      as H
+import           Network.DO.Spaces.Utils     ( writeACLSetter )
+import           Network.HTTP.Client.Conduit ( RequestBody(RequestBodyLBS) )
+import qualified Network.HTTP.Types          as H
 
--- | Get the full Access Control List associated with a 'Bucket'
-data GetBucketACLs = GetBucketACLs { bucket :: Bucket }
+data SetBucketACLs = SetBucketACLs
+    { bucket :: Bucket
+    , acls   :: [Grant]
+    , owner  :: Owner -- ^ The bucket's 'Owner'
+    }
     deriving ( Show, Eq, Generic )
 
-type GetBucketACLsResponse = ACLResponse
+type SetBucketACLsResponse = ()
 
-instance MonadSpaces m => Action m GetBucketACLs where
-    type (ConsumedResponse GetBucketACLs) = GetBucketACLsResponse
+instance MonadSpaces m => Action m SetBucketACLs where
+    type (ConsumedResponse SetBucketACLs) = SetBucketACLsResponse
 
-    buildRequest GetBucketACLs { .. } = do
+    buildRequest sba@SetBucketACLs { .. } = do
         spaces <- ask
         return SpacesRequestBuilder
                { bucket         = Just bucket
-               , method         = Nothing
-               , body           = Nothing
+               , method         = Just PUT
                , object         = Nothing
                , overrideRegion = Nothing
                , queryString    = Nothing
                , headers        = mempty
+               , body           = Just . RequestBodyLBS $ writeACLSetter sba
                , subresources   = Just
                      $ H.toQuery [ ( "acl" :: ByteString
                                    , Nothing :: Maybe ByteString
@@ -64,4 +71,4 @@ instance MonadSpaces m => Action m GetBucketACLs where
                , ..
                }
 
-    consumeResponse raw = aclP =<< xmlDocCursor raw
+    consumeResponse _ = return ()
