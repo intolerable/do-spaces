@@ -34,6 +34,8 @@ module Network.DO.Spaces.Types
     , Action(..)
     , CredentialSource(..)
     , Profile
+    , AccessKey(..)
+    , SecretKey(..)
       -- * Buckets and Objects
     , Object(..)
     , mkObject
@@ -45,7 +47,7 @@ module Network.DO.Spaces.Types
     , Owner(..)
     , ObjectInfo(..)
     , ObjectMetadata(..)
-    , CannedACL(..)
+    , ETag
       -- * Requests and responses
     , SpacesRequest(..)
     , SpacesResponse(..)
@@ -56,20 +58,23 @@ module Network.DO.Spaces.Types
     , BodyBS
     , Method(..)
     , Region(..)
-    , AccessKey(..)
-    , SecretKey(..)
-    , ETag
     , CacheControl
     , ContentDisposition
     , ContentEncoding
     , UserMetadata
     , UploadHeaders(..)
+    , CannedACL(..)
     , CORSRule(..)
     , mkCORSRule
     , Grant(..)
     , Permission(..)
     , Grantee(..)
     , ACLResponse(..)
+    , LifecycleRule(..)
+    , LifecycleExpiration(..)
+    , LifecycleID(..)
+    , mkLifecycleID
+      -- ** Signature calculation
     , Canonicalized(..)
     , Computed(..)
     , StringToSign
@@ -82,6 +87,7 @@ module Network.DO.Spaces.Types
     , SpacesException
     , ClientException(..)
     , APIException(..)
+    , Days
     ) where
 
 import           Conduit                      ( ConduitT, MonadUnliftIO )
@@ -112,6 +118,7 @@ import           Data.Text                    ( Text )
 import qualified Data.Text                    as T
 import           Data.Time                    ( UTCTime )
 import           Data.Typeable                ( cast )
+import           Data.Word                    ( Word16 )
 
 import           GHC.Generics                 ( Generic )
 
@@ -324,9 +331,42 @@ data Grantee
     | CanonicalUser Owner
     deriving ( Show, Eq, Generic )
 
+-- | A generic type for describing ACL configuration, can be applied to
+-- both 'Bucket' and 'Object' ACLs
 data ACLResponse =
     ACLResponse { owner :: Owner, accessControlList :: [Grant] }
     deriving ( Show, Eq, Generic )
+
+type Days = Word16
+
+-- | Lifecycle configuration for a 'Bucket'
+data LifecycleRule = LifecycleRule
+    { id'             :: LifecycleID
+    , prefix          :: Maybe Text
+      -- ^ When specified, only 'Object's which share the prefix will be affected
+      -- by the lifecycle rules
+    , enabled         :: Bool -- ^ The status of the @LifecycleRule@
+    , expiration      :: LifecycleExpiration
+    , abortIncomplete :: Maybe Days
+      -- ^ When specified, configures the deletion of incomplete multipart uploads
+    }
+    deriving ( Show, Eq, Generic )
+
+-- | Configuration for automatically deleting expire 'Object's
+data LifecycleExpiration = AfterDays Days | OnDate UTCTime
+    deriving ( Show, Eq, Generic )
+
+-- | A unique ID for a 'LifecycleRule'
+newtype LifecycleID = LifecycleID Text
+    deriving ( Show, Eq, Generic )
+
+-- | Smart constructor for 'LifecycleID', which may contain a maximum of 255
+-- characters, including spaces
+mkLifecycleID :: MonadThrow m => Text -> m LifecycleID
+mkLifecycleID t
+    | T.length t > 255 = throwM
+        $ OtherError "LifecycleID: ID exceeds maximum length (255 chars)"
+    | otherwise = return $ LifecycleID t
 
 -- | Smart constructor for 'CORSRule'. Ensures that both origins and header names
 -- contain a maximum of one wildcard and removes duplicates from both headers and

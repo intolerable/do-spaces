@@ -68,6 +68,11 @@ module Network.DO.Spaces
     , Profile
     , CORSRule
     , mkCORSRule
+    , Grant(..)
+    , Grantee(..)
+    , Permission(..)
+    , LifecycleID
+    , mkLifecycleID
     , SpacesException
     , ClientException(..)
     , APIException(..)
