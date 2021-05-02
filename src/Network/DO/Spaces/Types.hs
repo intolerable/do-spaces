@@ -342,11 +342,11 @@ type Days = Word16
 -- | Lifecycle configuration for a 'Bucket'
 data LifecycleRule = LifecycleRule
     { id'             :: LifecycleID
+    , enabled         :: Bool -- ^ The status of the @LifecycleRule@
     , prefix          :: Maybe Text
       -- ^ When specified, only 'Object's which share the prefix will be affected
       -- by the lifecycle rules
-    , enabled         :: Bool -- ^ The status of the @LifecycleRule@
-    , expiration      :: LifecycleExpiration
+    , expiration      :: Maybe LifecycleExpiration
     , abortIncomplete :: Maybe Days
       -- ^ When specified, configures the deletion of incomplete multipart uploads
     }

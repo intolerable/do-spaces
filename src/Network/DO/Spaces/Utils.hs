@@ -273,22 +273,20 @@ readContentLen :: Monad m => ByteString -> MaybeT m Int
 readContentLen = MaybeT . return . readMaybe @Int . C.unpack
 
 aclP :: MonadThrow m => Cursor Node -> m ACLResponse
-aclP cursor = do
-    owner <- X.forceM (xmlElemError "Owner")
-        $ cursor $/ X.laxElement "Owner" &| ownerP
-    accessControlList <- X.force (xmlElemError "AccessControlList")
-        $ cursor $/ X.laxElement "AccessControlList" &| grantsP
-    return ACLResponse { .. }
+aclP cursor = ACLResponse
+    <$> (X.forceM (xmlElemError "Owner")
+         $ cursor $/ X.laxElement "Owner" &| ownerP)
+    <*> (X.force (xmlElemError "AccessControlList")
+         $ cursor $/ X.laxElement "AccessControlList" &| grantsP)
   where
     grantsP c = X.forceM (xmlElemError "Grant") . sequence
         $ c $/ X.laxElement "Grant" &| grantP
 
-    grantP c = do
-        permission <- X.forceM (xmlElemError "Permission")
-            $ c $/ X.laxElement "Permission" &/ X.content &| readPerm
-        grantee <- X.forceM (xmlElemError "Grantee")
-            $ c $/ X.laxElement "Grantee" &| granteeP
-        return Grant { .. }
+    grantP c = Grant
+        <$> (X.forceM (xmlElemError "Permission")
+             $ c $/ X.laxElement "Permission" &/ X.content &| readPerm)
+        <*> (X.forceM (xmlElemError "Grantee")
+             $ c $/ X.laxElement "Grantee" &| granteeP)
       where
         readPerm = \case
             "FULL_CONTROL" -> return FullControl

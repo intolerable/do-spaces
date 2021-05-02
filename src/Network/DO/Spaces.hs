@@ -53,6 +53,7 @@ module Network.DO.Spaces
     , setBucketCORS
     , getBucketACLs
     , setBucketACLs
+    , getBucketLifecycleRules
       -- * Re-exports
     , Spaces
     , SpacesResponse
@@ -483,6 +484,14 @@ setBucketACLs :: MonadSpaces m
               -> m (SpacesResponse SetBucketACLs)
 setBucketACLs bucket acls owner =
     runAction KeepMetadata $ SetBucketACLs { .. }
+
+-- | Get a 'Bucket'\'s 'LifecycleRule' configuration . Note that unless you
+-- have explicitly configured lifecycle rules, this will fail with a 404
+-- status and an error code of @NoSuchLifecycleConfiguration@
+getBucketLifecycleRules
+    :: MonadSpaces m => Bucket -> m (SpacesResponse GetBucketLifecycle)
+getBucketLifecycleRules bucket =
+    runAction KeepMetadata $ GetBucketLifecycle { .. }
 --
 -- $conv
 -- The following are convenience actions. In most cases, each action is the same

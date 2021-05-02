@@ -41,6 +41,7 @@ main = sequence_ [ requests
                  , bucketName
                  , bucketCORS
                  , bucketACLs
+                 , bucketLifecycle
                  ]
 
 requests :: IO ()
@@ -423,5 +424,34 @@ bucketACLs = do
                      { permission = FullControl
                      , grantee    = CanonicalUser (Owner (OwnerID 6174283)
                                                          (OwnerID 6174283))
+                     }
+                   ]
+
+bucketLifecycle :: IO ()
+bucketLifecycle = do
+    sp <- testSpaces
+    rs <- withSourceFile "./tests/data/get-bucket-lifecycle.xml" $ \body -> do
+        let headers = mempty
+            raw     = RawResponse { .. }
+        runSpacesT (consumeResponse @_ @GetBucketLifecycle raw) sp
+
+    hspec
+        . describe "Network.DO.Spaces.Actions.GetBucketACLs"
+        . it "parses the response correctly"
+        $ (rs ^. #rules)
+        `shouldBe` [ LifecycleRule
+                     { id'             = LifecycleID "Expire old logs"
+                     , enabled         = True
+                     , expiration      = Just (AfterDays 90)
+                     , prefix          = Just "logs/"
+                     , abortIncomplete = Nothing
+                     }
+                   , LifecycleRule
+                     { id'             =
+                           LifecycleID "Remove uncompleted uploads"
+                     , enabled         = True
+                     , abortIncomplete = Just 1
+                     , expiration      = Nothing
+                     , prefix          = Nothing
                      }
                    ]

@@ -1,0 +1,18 @@
+<LifecycleConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+  <Rule>
+    <ID>Expire old logs</ID>
+    <Prefix>logs/</Prefix>
+    <Status>Enabled</Status>
+    <Expiration>
+      <Days>90</Days>
+    </Expiration>
+  </Rule>
+  <Rule>
+    <ID>Remove uncompleted uploads</ID>
+    <Status>Enabled</Status>
+    <Prefix/>
+    <AbortIncompleteMultipartUpload>
+      <DaysAfterInitiation>1</DaysAfterInitiation>
+    </AbortIncompleteMultipartUpload>
+  </Rule>
+</LifecycleConfiguration>
