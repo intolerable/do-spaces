@@ -54,6 +54,7 @@ module Network.DO.Spaces
     , getBucketACLs
     , setBucketACLs
     , getBucketLifecycleRules
+    , setBucketLifecycleRules
       -- * Re-exports
     , Spaces
     , SpacesResponse
@@ -492,6 +493,14 @@ getBucketLifecycleRules
     :: MonadSpaces m => Bucket -> m (SpacesResponse GetBucketLifecycle)
 getBucketLifecycleRules bucket =
     runAction KeepMetadata $ GetBucketLifecycle { .. }
+
+-- | Set a 'Bucket'\'s 'LifecycleRule' configuration
+setBucketLifecycleRules :: MonadSpaces m
+                        => Bucket
+                        -> [LifecycleRule]
+                        -> m (SpacesResponse SetBucketLifecycle)
+setBucketLifecycleRules bucket rules =
+    runAction KeepMetadata $ SetBucketLifecycle { .. }
 --
 -- $conv
 -- The following are convenience actions. In most cases, each action is the same

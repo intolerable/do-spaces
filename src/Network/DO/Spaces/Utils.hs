@@ -312,11 +312,11 @@ writeACLSetter r = X.renderLBS X.def $ X.Document prologue root mempty
   where
     prologue = X.Prologue mempty Nothing mempty
 
-    root = X.Element policyName mempty nodes
+    root = X.Element name mempty nodes
       where
-        policyName = X.Name "AccessControlPolicy"
-                            (Just "http://s3.amazonaws.com/doc/2006-03-01/")
-                            Nothing
+        name = X.Name "AccessControlPolicy"
+                      (Just "http://s3.amazonaws.com/doc/2006-03-01/")
+                      Nothing
 
     nodes = [ X.NodeElement
               $ X.Element "Owner"
