@@ -16,6 +16,32 @@ There are a few options for supplying your credentials. See ~newSpaces~ in ~Netw
 
 Each action returns a ~SpacesResponse~ record with two fields. The optional ~metadata~ field contains information about the response. The data returned from the transaction can be accessed through the polymorphic ~result~ field. Retention of metadata and response information can be configured in ~runAction~, but all of the convenience actions exported from ~Network.DO.Spaces~ keep metadata.
 
+A small example:
+
+#+begin_src haskell
+{-# LANGUAGE DataKinds #-}    
+{-# LANGUAGE TypeApplications #-}    
+    
+import Data.Sequence         ( Seq )
+import Data.Generics.Product ( HasField(field) )
+import Lens.Micro
+import Network.DO.Spaces
+
+myObjects :: IO (Seq ObjectInfo)
+myObjects = do
+    -- Load your credentials configuration from environment variables
+    spaces <- newSpaces Singapore (FromEnv Nothing)
+    -- Use the @mkBucket@ smart constructor, which will validate the name you provide
+    -- and ensure it conforms to Spaces API specifications
+    bucket <- mkBucket "my-real-bucket"
+    -- List the contents of your bucket. @listBucket@ will list all entries until the
+    -- Spaces limit of 1,000. There are several variants of this action in
+    -- "Network.DO.Spaces" with different options 
+    response <- runSpaces spaces $ listBucket bucket
+    return $ response ^. field @"result" . field @"objects"
+
+#+end_src
+
 ** A note about records
 Many transactions available through the Spaces API feature the same parameters. This necessitates dealing with duplicate fields in records that represent these transactions. For example, nearly every ~Action~ instance has a ~bucket~ field. I am not a fan of certain approaches to dealing with this problem: I am /highly/ unwilling to use pseudo-Hungarian Notation as record field prefixes, and I do not like using the leading-underscore name mangling approach in lenses. My personal preference is using the ~generic-lens~ package, and the library uses this internally along with ~DuplicateRecordFields~. There are a few options available when you use this library:
 
