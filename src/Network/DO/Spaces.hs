@@ -55,6 +55,7 @@ module Network.DO.Spaces
     , setBucketACLs
     , getBucketLifecycleRules
     , setBucketLifecycleRules
+    , deleteBucketLifecycleRules
       -- * Re-exports
     , Spaces
     , SpacesResponse
@@ -501,6 +502,12 @@ setBucketLifecycleRules :: MonadSpaces m
                         -> m (SpacesResponse SetBucketLifecycle)
 setBucketLifecycleRules bucket rules =
     runAction KeepMetadata $ SetBucketLifecycle { .. }
+
+-- | Delete a 'Bucket'\'s 'LifecycleRule' configuration
+deleteBucketLifecycleRules
+    :: MonadSpaces m => Bucket -> m (SpacesResponse DeleteBucketLifecycle)
+deleteBucketLifecycleRules bucket =
+    runAction KeepMetadata $ DeleteBucketLifecycle { .. }
 --
 -- $conv
 -- The following are convenience actions. In most cases, each action is the same

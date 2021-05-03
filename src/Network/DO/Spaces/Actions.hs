@@ -26,39 +26,42 @@ import           Conduit
                  , runConduit
                  )
 
-import           Control.Monad                                ( when )
+import           Control.Monad                                   ( when )
 import           Control.Monad.Catch
                  ( MonadThrow
                  , throwM
                  )
-import           Control.Monad.IO.Class                       ( MonadIO(liftIO)
-                                                              )
+import           Control.Monad.IO.Class
+                 ( MonadIO(liftIO)
+                 )
 
-import           Data.Conduit.Binary                          ( sinkLbs )
-import           Data.Function                                ( (&) )
-import           Data.Time                                    ( getCurrentTime
-                                                              )
+import           Data.Conduit.Binary                             ( sinkLbs )
+import           Data.Function                                   ( (&) )
+import           Data.Time
+                 ( getCurrentTime
+                 )
 
-import           Network.DO.Spaces.Actions.CopyObject         as M
-import           Network.DO.Spaces.Actions.CreateBucket       as M
-import           Network.DO.Spaces.Actions.DeleteBucket       as M
-import           Network.DO.Spaces.Actions.DeleteBucketCORS   as M
-import           Network.DO.Spaces.Actions.DeleteObject       as M
-import           Network.DO.Spaces.Actions.GetBucketACLs      as M
-import           Network.DO.Spaces.Actions.GetBucketCORS      as M
-import           Network.DO.Spaces.Actions.GetBucketLifecycle as M
-import           Network.DO.Spaces.Actions.GetBucketLocation  as M
-import           Network.DO.Spaces.Actions.GetObject          as M
-import           Network.DO.Spaces.Actions.GetObjectACLs      as M
-import           Network.DO.Spaces.Actions.GetObjectInfo      as M
-import           Network.DO.Spaces.Actions.ListAllBuckets     as M
-import           Network.DO.Spaces.Actions.ListBucket         as M
-import           Network.DO.Spaces.Actions.SetBucketACLs      as M
-import           Network.DO.Spaces.Actions.SetBucketCORS      as M
-import           Network.DO.Spaces.Actions.SetBucketLifecycle as M
-import           Network.DO.Spaces.Actions.SetObjectACLs      as M
-import           Network.DO.Spaces.Actions.UploadMultipart    as M
-import           Network.DO.Spaces.Actions.UploadObject       as M
+import           Network.DO.Spaces.Actions.CopyObject            as M
+import           Network.DO.Spaces.Actions.CreateBucket          as M
+import           Network.DO.Spaces.Actions.DeleteBucket          as M
+import           Network.DO.Spaces.Actions.DeleteBucketCORS      as M
+import           Network.DO.Spaces.Actions.DeleteBucketLifecycle as M
+import           Network.DO.Spaces.Actions.DeleteObject          as M
+import           Network.DO.Spaces.Actions.GetBucketACLs         as M
+import           Network.DO.Spaces.Actions.GetBucketCORS         as M
+import           Network.DO.Spaces.Actions.GetBucketLifecycle    as M
+import           Network.DO.Spaces.Actions.GetBucketLocation     as M
+import           Network.DO.Spaces.Actions.GetObject             as M
+import           Network.DO.Spaces.Actions.GetObjectACLs         as M
+import           Network.DO.Spaces.Actions.GetObjectInfo         as M
+import           Network.DO.Spaces.Actions.ListAllBuckets        as M
+import           Network.DO.Spaces.Actions.ListBucket            as M
+import           Network.DO.Spaces.Actions.SetBucketACLs         as M
+import           Network.DO.Spaces.Actions.SetBucketCORS         as M
+import           Network.DO.Spaces.Actions.SetBucketLifecycle    as M
+import           Network.DO.Spaces.Actions.SetObjectACLs         as M
+import           Network.DO.Spaces.Actions.UploadMultipart       as M
+import           Network.DO.Spaces.Actions.UploadObject          as M
 import           Network.DO.Spaces.Request
                  ( finalize
                  , mkAuthorization
@@ -80,13 +83,17 @@ import           Network.DO.Spaces.Utils
                  , xmlDocCursor
                  , xmlElemError
                  )
-import           Network.HTTP.Client.Conduit                  ( withResponse )
-import qualified Network.HTTP.Conduit                         as H
-import qualified Network.HTTP.Types                           as H
-import           Network.HTTP.Types                           ( Status )
+import           Network.HTTP.Client.Conduit                     ( withResponse
+                                                                 )
+import qualified Network.HTTP.Conduit                            as H
+import qualified Network.HTTP.Types                              as H
+import           Network.HTTP.Types                              ( Status )
 
-import qualified Text.XML.Cursor                              as X
-import           Text.XML.Cursor                              ( ($/), (&/) )
+import qualified Text.XML.Cursor                                 as X
+import           Text.XML.Cursor
+                 ( ($/)
+                 , (&/)
+                 )
 
 -- | Run an instance of 'Action', receiving a 'ConsumedResponse'. The retention
 -- of 'Network.DO.Spaces.Types.SpacesMetadata' can be controlled by passing a

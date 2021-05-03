@@ -17,19 +17,15 @@
 -- Stability   : experimental
 -- Portability : GHC
 --
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-
 module Network.DO.Spaces.Actions.SetBucketLifecycle
     ( SetBucketLifecycle(..)
     , SetBucketLifecycleResponse
     ) where
 
-import           Control.Monad.Catch         ( MonadThrow(throwM) )
 import           Control.Monad.Reader        ( MonadReader(ask) )
 
 import           Data.ByteString             ( ByteString )
 import           Data.Coerce                 ( coerce )
-import           Data.Maybe                  ( listToMaybe )
 import qualified Data.Text                   as T
 import           Data.Time.Format.ISO8601    ( iso8601Show )
 
@@ -38,7 +34,6 @@ import           GHC.Generics                ( Generic )
 import           Network.DO.Spaces.Types
                  ( Action(..)
                  , Bucket
-                 , ClientException(InvalidXML)
                  , LifecycleExpiration(AfterDays, OnDate)
                  , LifecycleID(LifecycleID)
                  , LifecycleRule(..)

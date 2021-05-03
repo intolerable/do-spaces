@@ -68,6 +68,7 @@ library
     Network.DO.Spaces.Actions.CreateBucket
     Network.DO.Spaces.Actions.DeleteBucket
     Network.DO.Spaces.Actions.DeleteBucketCORS
+    Network.DO.Spaces.Actions.DeleteBucketLifecycle
     Network.DO.Spaces.Actions.DeleteObject
     Network.DO.Spaces.Actions.GetBucketACLs
     Network.DO.Spaces.Actions.GetBucketCORS
