@@ -1,7 +1,35 @@
 #+TITLE: do-spaces
 
 * About
-  ~do-spaces~ is a Haskell library providing bindings to DigitalOcean's Spaces API, an Amazon s3-compatible object storage service.
+  ~do-spaces~ is a Haskell library providing complete bindings to DigitalOcean's Spaces API, an Amazon s3-compatible object storage service.
+
+* Usage
+~Network.DO.Spaces~ exposes the types and actions requires to make transactions through the Spaces API. The first step is to configure a client by supplying your credentials and a region:
+#+begin_src haskell
+someTransaction = do
+    mySpaces <- newSpaces NewYork (FromFile "~/.spaces-secrets" Nothing)
+    runSpaces mySpaces $ ...
+#+end_src
+There are a few options for supplying your credentials. See ~newSpaces~ in ~Network.DO.Spaces~ for more details.
+
+~Network.DO.Spaces~ exposes several convenience actions for common transactions. These are simple wrappers around instances of the ~Action~ typeclass. Each of the actions must be run via ~runSpaces~ with a ~Spaces~ client configuration. If more granular control is required, especially in the case of actions which take several optional parameters (e.g., ~ListBucket~), you can directly import the ~Action~ instance, construct it, and run it with ~runAction~. These are available from the ~Network.DO.Spaces.Actions~ module.
+
+Each action returns a ~SpacesResponse~ record with two fields. The optional ~metadata~ field contains information about the response. The data returned from the transaction can be accessed through the polymorphic ~result~ field. Retention of metadata and response information can be configured in ~runAction~, but all of the convenience actions exported from ~Network.DO.Spaces~ keep metadata.
+
+** A note about records
+Many transactions available through the Spaces API feature the same parameters. This necessitates dealing with duplicate fields in records that represent these transactions. For example, nearly every ~Action~ instance has a ~bucket~ field. I am not a fan of certain approaches to dealing with this problem: I am /highly/ unwilling to use pseudo-Hungarian Notation as record field prefixes, and I do not like using the leading-underscore name mangling approach in lenses. My personal preference is using the ~generic-lens~ package, and the library uses this internally along with ~DuplicateRecordFields~. There are a few options available when you use this library:
+
+*** Use ~generic-lens~ with ~OverloadedLabels~
+This is my personal preference. Note that I did *not* use the overloaded labels in the library itself, due to the (necessary) orphan instance in ~generic-lens~. If you'd like to see an example of this, refer to the ~io-tests~ directory in this repository.
+
+*** Use ~generic-lens~ with ~field~
+This is the approach that the library uses internally, requires ~DataKinds~ and ~TypeApplications~ to use ~field~.
+
+*** Use the record selectors
+Record selectors can be accessed by importing the relevant module directly, as they are not exported from ~Network.DO.Spaces~. You might want to import different types qualified, due to the aforementioned proliferation of record field duplication.
+
+* But why?
+Spaces is nominally compatible with existing Amazon S3 SDKs and clients, so it might seem redundant to create a dedicated client library for the service. DigitalOcean's spaces are different from Amazon's, however, requiring a stringly-typed region when configuring clients. True to form, Amazon client libraries written in Haskell (e.g., ~Amazonka~) tend to use an ADT to represent regions, precluding their use with Spaces. Furthermore, using an entire Amazon client might be overkill for an application that only requires s3 functionality, requiring a heavyweight dependency.
 
 * License
   This library is distributed under the BSD three-clause license

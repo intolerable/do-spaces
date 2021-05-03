@@ -60,6 +60,7 @@ module Network.DO.Spaces
     , Spaces
     , SpacesResponse
     , SpacesMetadata
+    , MonadSpaces
     , Bucket
     , mkBucket
     , Object
