@@ -13,6 +13,7 @@ let
 
   shell = hpkgs.shellFor {
     packages = p: [ p."do-spaces" ];
+    configureFlags = [ "-f io-tests" ];
     buildInputs = with pkgs.haskellPackages; [
       (
         pkgs.haskell-language-server.override { supportedGhcVersions = [ "8104" ]; }
