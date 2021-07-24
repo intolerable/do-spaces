@@ -80,7 +80,7 @@ instance MonadSpaces m => Action m SetBucketLifecycle where
         rulesNode LifecycleRule { .. } =
             X.NodeElement $ X.Element "Rule" mempty nodes
           where
-            nodes = [ mkNode "ID" (coerce lifecyleID)
+            nodes = [ mkNode "ID" (coerce lifecycleID)
                     , mkNode "Status" (showEnabled enabled)
                     ]
                 <> foldMap (pure . mkNode "Prefix") prefix

@@ -439,14 +439,14 @@ bucketLifecycle = do
         . it "parses the response correctly"
         $ (rs ^. #rules)
         `shouldBe` [ LifecycleRule
-                     { lifecyleID      = LifecycleID "Expire old logs"
+                     { lifecycleID      = LifecycleID "Expire old logs"
                      , enabled         = True
                      , expiration      = Just (AfterDays 90)
                      , prefix          = Just "logs/"
                      , abortIncomplete = Nothing
                      }
                    , LifecycleRule
-                     { lifecyleID      =
+                     { lifecycleID      =
                            LifecycleID "Remove uncompleted uploads"
                      , enabled         = True
                      , abortIncomplete = Just 1

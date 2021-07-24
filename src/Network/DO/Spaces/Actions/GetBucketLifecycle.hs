@@ -87,7 +87,7 @@ instance MonadSpaces m => Action m GetBucketLifecycle where
 
 ruleP :: MonadThrow m => Cursor X.Node -> m LifecycleRule
 ruleP c = do
-    lifecyleID <- X.force (xmlElemError "ID")
+    lifecycleID <- X.force (xmlElemError "ID")
         $ c $/ X.laxElement "ID" &/ X.content &| coerce
     enabled <- X.forceM (xmlElemError "Status")
         $ c $/ X.laxElement "Status" &/ X.content &| readStatus
