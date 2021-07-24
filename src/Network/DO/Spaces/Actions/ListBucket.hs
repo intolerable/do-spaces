@@ -44,6 +44,8 @@ import qualified Network.HTTP.Types      as H
 import qualified Text.XML.Cursor         as X
 import           Text.XML.Cursor         ( ($/), (&/), (&|) )
 
+import           Web.HttpApiData         ( ToHttpApiData(toQueryParam) )
+
 -- | List the contents ('Object's) of a 'Bucket'
 data ListBucket = ListBucket
     { bucket    :: Bucket
@@ -86,20 +88,21 @@ instance MonadSpaces m => Action m ListBucket where
         spaces <- ask
 
         pure SpacesRequestBuilder
-               { bucket         = Just bucket
-               , body           = Nothing
-               , object         = Nothing
-               , method         = Nothing
-               , headers        = mempty
-               , subresources   = Nothing
-               , overrideRegion = Nothing
-               , ..
-               }
+             { bucket         = Just bucket
+             , body           = Nothing
+             , object         = Nothing
+             , method         = Nothing
+             , headers        = mempty
+             , subresources   = Nothing
+             , overrideRegion = Nothing
+             , ..
+             }
       where
         queryString = Just
             $ H.toQuery [ ("delimiter" :: ByteString, ) . C.singleton
                           <$> delimiter
-                        , ("marker", ) . T.encodeUtf8 . unObject <$> marker
+                        , ("marker", ) . T.encodeUtf8 . toQueryParam
+                          <$> marker
                         , ("max-keys", ) . bshow <$> maxKeys
                         , ("prefix", ) . T.encodeUtf8 <$> prefix
                         ]

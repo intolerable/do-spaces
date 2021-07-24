@@ -51,6 +51,7 @@ library
     , extra              >=1.6  && <1.8
     , filepath           ^>=1.4
     , generic-lens       >=1.1  && <2.2
+    , http-api-data      ^>=0.4
     , http-client-tls    ^>=0.3
     , http-conduit       ^>=2.3
     , http-types         ^>=0.12

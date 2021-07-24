@@ -17,6 +17,8 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
+{-# OPTIONS_GHC -Wno-unticked-promoted-constructors #-}
+
 -- |
 -- Module      : Network.DO.Spaces.Types
 -- Copyright   : (c) 2021 Rory Tyler Hayford
@@ -133,6 +135,8 @@ import           Network.HTTP.Types           ( Header, HeaderName, Query )
 import           Network.HTTP.Types.Status    ( Status )
 import           Network.Mime                 ( MimeType )
 
+import           Web.HttpApiData              ( ToHttpApiData )
+
 newtype SpacesT m a = SpacesT (ReaderT Spaces m a)
     deriving stock ( Generic )
     deriving newtype ( Functor, Applicative, Monad, MonadIO, MonadThrow
@@ -201,9 +205,9 @@ data Method = GET | POST | PUT | DELETE | HEAD
     deriving stock ( Show, Eq, Generic, Ord, Read )
 
 -- | The name of a single storage bucket
-newtype Bucket = Bucket { unBucket :: Text }
+newtype Bucket = Bucket Text
     deriving stock ( Show, Generic )
-    deriving newtype ( Eq )
+    deriving newtype ( Eq, ToHttpApiData )
 
 -- | Smart constructor for 'Bucket's; names must conform to the following rules:
 --
@@ -244,14 +248,15 @@ data BucketInfo = BucketInfo { name :: Bucket, creationDate :: UTCTime }
     deriving stock ( Show, Eq, Generic )
 
 -- | The name of a \"key\", in AWS parlance
-newtype Object = Object { unObject :: Text }
+newtype Object = Object Text
     deriving stock ( Show, Generic )
-    deriving newtype ( Eq )
+    deriving newtype ( Eq, ToHttpApiData )
 
 -- | Smart constructor for 'Object's; names must not be empty
 mkObject :: MonadThrow m => Text -> m Object
-mkObject "" = throwM . OtherError $ "Object: Name must not be empty"
-mkObject x  = pure $ Object x
+mkObject t
+    | T.null t = throwM . OtherError $ "Object: Name must not be empty"
+    | otherwise = pure $ Object t
 
 -- | Information about a single 'Object', returned when listing a 'Bucket'\'s
 -- contents
@@ -278,9 +283,9 @@ data Owner = Owner { ownerID :: OwnerID, displayName :: DisplayName }
     deriving stock ( Show, Eq, Generic )
 
 -- | The ID of an 'Owner'; also serves as a display name in Spaces
-newtype OwnerID = OwnerID { unOwnerID :: Int }
+newtype OwnerID = OwnerID Int
     deriving stock ( Show, Generic )
-    deriving newtype ( Eq, Num )
+    deriving newtype ( Eq, Num, ToHttpApiData )
 
 -- | The display name is always equivalent to the owner's ID; Spaces includes
 -- it for AWS compatibility
@@ -390,7 +395,7 @@ mkCORSRule origin ms hs
 
 -- | Represents some resource that has been canonicalized according to the
 -- Spaces/AWS v4 spec
-newtype Canonicalized a = Canonicalized { unCanonicalized :: ByteString }
+newtype Canonicalized a = Canonicalized ByteString
     deriving stock ( Show, Eq, Generic )
 
 -- | Different types of computed 'ByteString's
@@ -406,13 +411,13 @@ data ComputedTag = Hash | StrToSign | Sig | Cred | Auth
 -- unclear type signatures. Using a GADT with type synonyms is simpler than
 -- creating a @newtype@ for each type of computation
 data Computed (a :: ComputedTag) where
-    Hashed :: ByteString -> Computed 'Hash
+    Hashed :: ByteString -> Computed Hash
     -- | Represents a \"string to sign\" that has been computed according to the
     -- Spaces/AWS v4 spec
-    StringToSign :: ByteString -> Computed 'StrToSign
+    StringToSign :: ByteString -> Computed StrToSign
     -- | Signed hash of a 'Request' body, a 'SecretKey', and request information
-    Signature :: ByteString -> Computed 'Sig
-    Credentials :: ByteString -> Computed 'Cred
+    Signature :: ByteString -> Computed Sig
+    Credentials :: ByteString -> Computed Cred
     -- | Authorization string containing information about your 'AccessKey' and
     -- your request
     Authorization :: ByteString -> Computed 'Auth

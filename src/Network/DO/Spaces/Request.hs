@@ -38,6 +38,7 @@ import           Data.Coerce                     ( coerce )
 import           Data.Function                   ( (&) )
 import           Data.Generics.Product           ( HasField(field) )
 import           Data.Generics.Product.Positions ( HasPosition(position) )
+import           Data.Generics.Wrapped
 import           Data.List                       ( sort )
 import           Data.Maybe                      ( fromMaybe )
 import qualified Data.Text                       as T
@@ -126,7 +127,7 @@ mkCanonicalized subresources query request payloadHash = Canonicalized
                     , request
                       & H.requestHeaders
                       & canonicalizeHeaders
-                      & unCanonicalized
+                      & wrappedTo
                     , request & H.requestHeaders & joinHeaderNames
                     , uncompute payloadHash
                     ]
