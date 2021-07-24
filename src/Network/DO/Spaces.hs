@@ -150,19 +150,19 @@ runSpaces = flip runSpacesT
 --     * For the 'Region':
 --
 --         - @AWS_DEFAULT_REGION@
---         - @SPACES_DEFAULT_REGION@
+--         - /OR/ @SPACES_DEFAULT_REGION@
 --
 --     * For the 'AccessKey':
 --
 --         - @AWS_ACCESS_KEY_ID@
---         - @SPACES_ACCESS_KEY_ID@
---         - @SPACES_ACCESS_KEY@
+--         - /OR/ @SPACES_ACCESS_KEY_ID@
+--         - /OR/ @SPACES_ACCESS_KEY@
 --
 --     * For the 'SecretKey':
 --
 --         - @AWS_SECRET_ACCESS_KEY@
---         - @SPACES_SECRET_ACCESS_KEY@
---         - @SPACES_SECRET_KEY@
+--         - /OR/ @SPACES_SECRET_ACCESS_KEY@
+--         - /OR/ @SPACES_SECRET_KEY@
 --
 -- Alternatively, you can directly specify a tuple of environment variables to
 -- search for.
