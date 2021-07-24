@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -32,16 +33,7 @@ import           Data.Time.Format.ISO8601    ( iso8601Show )
 import           GHC.Generics                ( Generic )
 
 import           Network.DO.Spaces.Types
-                 ( Action(..)
-                 , Bucket
-                 , LifecycleExpiration(AfterDays, OnDate)
-                 , LifecycleID(LifecycleID)
-                 , LifecycleRule(..)
-                 , Method(PUT)
-                 , MonadSpaces
-                 , SpacesRequestBuilder(..)
-                 )
-import           Network.DO.Spaces.Utils     ( mkNode, tshow )
+import           Network.DO.Spaces.Utils
 import           Network.HTTP.Client.Conduit ( RequestBody(RequestBodyLBS) )
 import qualified Network.HTTP.Types          as H
 
@@ -50,7 +42,7 @@ import qualified Text.XML                    as X
 -- | Configure the 'LifecycleRule's for a 'Bucket'
 data SetBucketLifecycle =
     SetBucketLifecycle { bucket :: Bucket, rules :: [LifecycleRule] }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 type SetBucketLifecycleResponse = ()
 
@@ -59,7 +51,7 @@ instance MonadSpaces m => Action m SetBucketLifecycle where
 
     buildRequest SetBucketLifecycle { .. } = do
         spaces <- ask
-        return SpacesRequestBuilder
+        pure SpacesRequestBuilder
                { bucket         = Just bucket
                , method         = Just PUT
                , object         = Nothing
@@ -111,4 +103,4 @@ instance MonadSpaces m => Action m SetBucketLifecycle where
                             mempty
                             [ mkNode "DaysAfterInitiation" (tshow days) ]
 
-    consumeResponse _ = return ()
+    consumeResponse _ = pure ()

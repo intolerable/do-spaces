@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -28,19 +29,12 @@ import           Data.ByteString         ( ByteString )
 import           GHC.Generics            ( Generic )
 
 import           Network.DO.Spaces.Types
-                 ( ACLResponse
-                 , Action(..)
-                 , Bucket
-                 , MonadSpaces
-                 , Object
-                 , SpacesRequestBuilder(..)
-                 )
-import           Network.DO.Spaces.Utils ( aclP, xmlDocCursor )
+import           Network.DO.Spaces.Utils
 import qualified Network.HTTP.Types      as H
 
 -- | Get the full Access Control List associated with a 'Bucket'
 data GetObjectACLs = GetObjectACLs { bucket :: Bucket, object :: Object }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 type GetObjectACLsResponse = ACLResponse
 
@@ -49,7 +43,7 @@ instance MonadSpaces m => Action m GetObjectACLs where
 
     buildRequest GetObjectACLs { .. } = do
         spaces <- ask
-        return SpacesRequestBuilder
+        pure SpacesRequestBuilder
                { bucket         = Just bucket
                , object         = Just object
                , method         = Nothing

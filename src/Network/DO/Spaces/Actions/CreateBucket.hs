@@ -1,4 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
+
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -28,15 +30,7 @@ import           Data.Maybe              ( catMaybes )
 import           GHC.Generics            ( Generic )
 
 import           Network.DO.Spaces.Types
-                 ( Action(..)
-                 , Bucket
-                 , CannedACL
-                 , Method(PUT)
-                 , MonadSpaces
-                 , Region
-                 , SpacesRequestBuilder(..)
-                 )
-import           Network.DO.Spaces.Utils ( showCannedACL )
+import           Network.DO.Spaces.Utils
 
 -- | Create a new, empty 'Bucket'
 data CreateBucket = CreateBucket
@@ -46,7 +40,7 @@ data CreateBucket = CreateBucket
       -- ^ The 'CannedACL' to use; defaults to
       -- 'Network.DO.Spaces.Types.CannedACL.Private'
     }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 type CreateBucketResponse = ()
 
@@ -55,7 +49,7 @@ instance MonadSpaces m => Action m CreateBucket where
 
     buildRequest CreateBucket { .. } = do
         spaces <- ask
-        return SpacesRequestBuilder
+        pure SpacesRequestBuilder
                { bucket         = Just bucket
                , method         = Just PUT
                , overrideRegion = region
@@ -68,4 +62,4 @@ instance MonadSpaces m => Action m CreateBucket where
       where
         headers = catMaybes [ (CI.mk "x-amz-acl", ) . showCannedACL <$> acl ]
 
-    consumeResponse _ = return ()
+    consumeResponse _ = pure ()

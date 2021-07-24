@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -37,26 +38,7 @@ import qualified Data.Text.Encoding      as T
 import           GHC.Generics            ( Generic )
 
 import           Network.DO.Spaces.Types
-                 ( Action(..)
-                 , Bucket(Bucket)
-                 , ClientException(InvalidRequest)
-                 , MonadSpaces
-                 , Object(..)
-                 , ObjectInfo(..)
-                 , SpacesRequestBuilder(..)
-                 )
 import           Network.DO.Spaces.Utils
-                 ( bshow
-                 , etagP
-                 , isTruncP
-                 , lastModifiedP
-                 , ownerP
-                 , xmlDocCursor
-                 , xmlElemError
-                 , xmlInt
-                 , xmlMaybeElem
-                 , xmlNum
-                 )
 import qualified Network.HTTP.Types      as H
 
 import qualified Text.XML.Cursor         as X
@@ -74,7 +56,7 @@ data ListBucket = ListBucket
       -- ^ String value to group keys. Only objects whose names begin with the
       -- prefix are returned
     }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 data ListBucketResponse = ListBucketResponse
     { bucket      :: Bucket
@@ -92,7 +74,7 @@ data ListBucketResponse = ListBucketResponse
       -- ^ Indicates whether the response contains all possible 'Object's
     , objects     :: Seq ObjectInfo
     }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 instance MonadSpaces m => Action m ListBucket where
     type ConsumedResponse ListBucket = ListBucketResponse
@@ -103,7 +85,7 @@ instance MonadSpaces m => Action m ListBucket where
             $ InvalidRequest "ListBucket: maxKeys must be >= 0 && <= 1000"
         spaces <- ask
 
-        return SpacesRequestBuilder
+        pure SpacesRequestBuilder
                { bucket         = Just bucket
                , body           = Nothing
                , object         = Nothing
@@ -133,7 +115,7 @@ instance MonadSpaces m => Action m ListBucket where
         let prefix     = xmlMaybeElem cursor "Prefix"
             marker     = coerce <$> xmlMaybeElem cursor "Marker"
             nextMarker = coerce <$> xmlMaybeElem cursor "NextMarker"
-        return ListBucketResponse { .. }
+        pure ListBucketResponse { .. }
       where
         objectInfoP c = do
             object <- X.force (xmlElemError "Key")
@@ -144,4 +126,4 @@ instance MonadSpaces m => Action m ListBucket where
                 $ c $/ X.laxElement "Size" &/ X.content &| xmlInt
             owner <- X.forceM (xmlElemError "Owner")
                 $ c $/ X.laxElement "Owner" &| ownerP
-            return ObjectInfo { .. }
+            pure ObjectInfo { .. }

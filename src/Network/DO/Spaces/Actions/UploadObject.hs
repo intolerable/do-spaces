@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -57,29 +58,29 @@ data UploadObject = UploadObject
     , optionalHeaders :: UploadHeaders
     , contentType     :: Maybe MimeType
     }
-    deriving ( Generic )
+    deriving stock ( Generic )
 
 data UploadObjectResponse = UploadObjectResponse
     { etag          :: ETag
     , contentLength :: Int -- ^ Length in bytes
     }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 instance MonadSpaces m => Action m UploadObject where
     type ConsumedResponse UploadObject = UploadObjectResponse
 
     buildRequest UploadObject { .. } = do
         spaces <- ask
-        return SpacesRequestBuilder
-               { bucket         = Just bucket
-               , object         = Just object
-               , method         = Just PUT
-               , body           = Just body
-               , queryString    = Nothing
-               , subresources   = Nothing
-               , overrideRegion = Nothing
-               , ..
-               }
+        pure SpacesRequestBuilder
+             { bucket         = Just bucket
+             , object         = Just object
+             , method         = Just PUT
+             , body           = Just body
+             , queryString    = Nothing
+             , subresources   = Nothing
+             , overrideRegion = Nothing
+             , ..
+             }
       where
         headers = maybe id
                         (\ct -> (:) (CI.mk "Content-Type", ct))
@@ -91,7 +92,7 @@ instance MonadSpaces m => Action m UploadObject where
             $ UploadObjectResponse <$> (readEtag =<< lookupHeader' "etag")
             <*> (readContentLen =<< lookupHeader' "Content-Length")
         case resp of
-            Just r  -> return r
+            Just r  -> pure r
             Nothing -> throwM $ OtherError "Missing/malformed headers"
       where
         lookupHeader' = lookupHeader raw

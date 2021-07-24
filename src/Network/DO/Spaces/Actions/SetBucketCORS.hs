@@ -1,4 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
+
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -16,8 +18,6 @@
 -- Stability   : experimental
 -- Portability : GHC
 --
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-
 module Network.DO.Spaces.Actions.SetBucketCORS
     ( SetBucketCORSResponse
     , SetBucketCORS(..)
@@ -27,20 +27,12 @@ import           Control.Monad.Reader    ( MonadReader(ask) )
 
 import           Data.ByteString         ( ByteString )
 import qualified Data.CaseInsensitive    as CI
-import qualified Data.Text               as T
 import qualified Data.Text.Encoding      as T
 
 import           GHC.Generics            ( Generic )
 
 import           Network.DO.Spaces.Types
-                 ( Action(..)
-                 , Bucket
-                 , CORSRule(..)
-                 , Method(PUT)
-                 , MonadSpaces
-                 , SpacesRequestBuilder(..)
-                 )
-import           Network.DO.Spaces.Utils ( mkNode, tshow )
+import           Network.DO.Spaces.Utils
 import           Network.HTTP.Conduit    ( RequestBody(RequestBodyLBS) )
 import qualified Network.HTTP.Types      as H
 
@@ -48,7 +40,7 @@ import qualified Text.XML                as X
 
 -- | Set a 'Bucket'\'s 'CORSRule's
 data SetBucketCORS = SetBucketCORS { bucket :: Bucket, rules :: [CORSRule] }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 type SetBucketCORSResponse = ()
 
@@ -57,7 +49,7 @@ instance MonadSpaces m => Action m SetBucketCORS where
 
     buildRequest SetBucketCORS { .. } = do
         spaces <- ask
-        return SpacesRequestBuilder
+        pure SpacesRequestBuilder
                { bucket         = Just bucket
                , method         = Just PUT
                , object         = Nothing
@@ -86,4 +78,4 @@ instance MonadSpaces m => Action m SetBucketCORS where
                       , mkNode "AllowedMethod" . tshow <$> allowedMethods
                       ]
 
-    consumeResponse _ = return ()
+    consumeResponse _ = pure ()

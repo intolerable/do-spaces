@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -37,28 +38,12 @@ import           Data.Time               ( UTCTime )
 import           GHC.Generics            ( Generic )
 
 import           Network.DO.Spaces.Types
-                 ( Action(..)
-                 , Bucket(Bucket)
-                 , CannedACL
-                 , ClientException(InvalidRequest)
-                 , ETag
-                 , Method(PUT)
-                 , MonadSpaces
-                 , Object(Object)
-                 , SpacesRequestBuilder(..)
-                 )
 import           Network.DO.Spaces.Utils
-                 ( bshow
-                 , etagP
-                 , lastModifiedP
-                 , showCannedACL
-                 , xmlDocCursor
-                 )
 
 -- | Whether the 'Object'\'s metadata should be copied or replaced. Replace is
 -- required to copy an object to itself
 data MetadataDirective = Copy | Replace
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 -- | Copy and 'Object' from one 'Bucket' to another. Both buckets must
 -- be in the same region
@@ -70,11 +55,11 @@ data CopyObject = CopyObject
     , metadataDirective :: MetadataDirective
     , acl               :: Maybe CannedACL
     }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 data CopyObjectResponse =
     CopyObjectResponse { etag :: ETag, lastModified :: UTCTime }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 instance MonadSpaces m => Action m CopyObject where
     type ConsumedResponse CopyObject = CopyObjectResponse
@@ -88,16 +73,16 @@ instance MonadSpaces m => Action m CopyObject where
                       , "REPLACE directive is specified"
                       ]
         spaces <- ask
-        return SpacesRequestBuilder
-               { object         = Just destObject
-               , bucket         = Just destBucket
-               , method         = Just PUT
-               , body           = Nothing
-               , queryString    = Nothing
-               , subresources   = Nothing
-               , overrideRegion = Nothing
-               , ..
-               }
+        pure SpacesRequestBuilder
+             { object         = Just destObject
+             , bucket         = Just destBucket
+             , method         = Just PUT
+             , body           = Nothing
+             , queryString    = Nothing
+             , subresources   = Nothing
+             , overrideRegion = Nothing
+             , ..
+             }
       where
         headers = [ ( CI.mk "x-amz-copy-source"
                     , mconcat [ "/"

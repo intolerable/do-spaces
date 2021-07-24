@@ -2,6 +2,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -133,8 +134,9 @@ import           Network.HTTP.Types.Status    ( Status )
 import           Network.Mime                 ( MimeType )
 
 newtype SpacesT m a = SpacesT (ReaderT Spaces m a)
-    deriving ( Generic, Functor, Applicative, Monad, MonadIO, MonadThrow
-             , MonadCatch, MonadReader Spaces, MonadUnliftIO )
+    deriving stock ( Generic )
+    deriving newtype ( Functor, Applicative, Monad, MonadIO, MonadThrow
+                     , MonadCatch, MonadReader Spaces, MonadUnliftIO )
 
 runSpacesT :: SpacesT m a -> Spaces -> m a
 runSpacesT (SpacesT x) = runReaderT x
@@ -149,7 +151,7 @@ data Spaces = Spaces
     , region    :: Region -- ^ The DO region
     , manager   :: Manager -- ^ HTTP 'Manager'
     }
-    deriving ( Generic )
+    deriving stock ( Generic )
 
 instance HasHttpManager Spaces where
     getHttpManager = manager
@@ -166,7 +168,7 @@ data SpacesRequest = SpacesRequest
       -- ^ The canonicalized HTTP 'Request'
     , time             :: UTCTime
     }
-    deriving ( Generic )
+    deriving stock ( Generic )
 
 data SpacesRequestBuilder = SpacesRequestBuilder
     { spaces         :: Spaces
@@ -182,7 +184,7 @@ data SpacesRequestBuilder = SpacesRequestBuilder
       -- should be able to override the region configured in the 'Spaces'
       -- client
     }
-    deriving ( Generic )
+    deriving stock ( Generic )
 
 -- | DO regions where Spaces is available (only a subset of all regions)
 data Region
@@ -191,16 +193,17 @@ data Region
     | SanFrancisco  -- ^ SFO3
     | Singapore -- ^ SGP1
     | Frankfurt -- ^ FRA1
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 -- | HTTP request methods, to avoid using @http-client@'s stringly-typed @Method@
 -- synonym
 data Method = GET | POST | PUT | DELETE | HEAD
-    deriving ( Show, Eq, Generic, Ord, Read )
+    deriving stock ( Show, Eq, Generic, Ord, Read )
 
 -- | The name of a single storage bucket
 newtype Bucket = Bucket { unBucket :: Text }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Generic )
+    deriving newtype ( Eq )
 
 -- | Smart constructor for 'Bucket's; names must conform to the following rules:
 --
@@ -226,7 +229,7 @@ mkBucket t
         bucketErr "Name must begin with a letter or digit"
     | T.last t
         `elem` [ '.', '-' ] = bucketErr "Name must end with a letter or digit"
-    | otherwise = return . Bucket $ T.map toLower t
+    | otherwise = pure . Bucket $ T.map toLower t
   where
     len         = T.length t
 
@@ -238,16 +241,17 @@ mkBucket t
 
 -- | Information about a single 'Bucket'
 data BucketInfo = BucketInfo { name :: Bucket, creationDate :: UTCTime }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 -- | The name of a \"key\", in AWS parlance
 newtype Object = Object { unObject :: Text }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Generic )
+    deriving newtype ( Eq )
 
 -- | Smart constructor for 'Object's; names must not be empty
 mkObject :: MonadThrow m => Text -> m Object
 mkObject "" = throwM . OtherError $ "Object: Name must not be empty"
-mkObject x  = return $ Object x
+mkObject x  = pure $ Object x
 
 -- | Information about a single 'Object', returned when listing a 'Bucket'\'s
 -- contents
@@ -258,7 +262,7 @@ data ObjectInfo = ObjectInfo
     , size         :: Int -- ^ Size in bytes
     , owner        :: Owner
     }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 -- | Metadata returned when querying information about an 'Object'
 data ObjectMetadata = ObjectMetadata
@@ -267,15 +271,16 @@ data ObjectMetadata = ObjectMetadata
     , etag          :: ETag
     , lastModified  :: UTCTime
     }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 -- | The resource owner
 data Owner = Owner { id' :: OwnerID, displayName :: DisplayName }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 -- | The ID of an 'Owner'; also serves as a display name in Spaces
 newtype OwnerID = OwnerID { unOwnerID :: Int }
-    deriving ( Show, Eq, Generic, Num )
+    deriving stock ( Show, Generic )
+    deriving newtype ( Eq, Num )
 
 -- | The display name is always equivalent to the owner's ID; Spaces includes
 -- it for AWS compatibility
@@ -292,7 +297,7 @@ data UploadHeaders = UploadHeaders
     , contentEncoding    :: Maybe ContentEncoding
     , metadata           :: UserMetadata
     }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 -- | @Cache-Control@ request header value
 type CacheControl = Text
@@ -314,28 +319,28 @@ data CORSRule = CORSRule
     , allowedMethods :: [Method]
     , allowedHeaders :: [HeaderName]
     }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 -- | An individual access grant
 data Grant = Grant { permission :: Permission, grantee :: Grantee }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 -- | Access grant level; Spaces currently only supports these two levels
 data Permission = ReadOnly | FullControl
-    deriving ( Show, Eq, Generic, Ord )
+    deriving stock ( Show, Eq, Generic, Ord )
 
 -- | Information about who an access grant applies to
 data Grantee
     = Group -- ^ Nominally contains a URI value, but Spaces only supports a
       -- single value for group access grants
     | CanonicalUser Owner
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 -- | A generic type for describing ACL configuration, can be applied to
 -- both 'Bucket' and 'Object' ACLs
 data ACLResponse =
     ACLResponse { owner :: Owner, accessControlList :: [Grant] }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 type Days = Word16
 
@@ -350,15 +355,15 @@ data LifecycleRule = LifecycleRule
     , abortIncomplete :: Maybe Days
       -- ^ When specified, configures the deletion of incomplete multipart uploads
     }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 -- | Configuration for automatically deleting expire 'Object's
 data LifecycleExpiration = AfterDays Days | OnDate UTCTime
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 -- | A unique ID for a 'LifecycleRule'
 newtype LifecycleID = LifecycleID Text
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 -- | Smart constructor for 'LifecycleID', which may contain a maximum of 255
 -- characters, including spaces
@@ -366,7 +371,7 @@ mkLifecycleID :: MonadThrow m => Text -> m LifecycleID
 mkLifecycleID t
     | T.length t > 255 = throwM
         $ OtherError "LifecycleID: ID exceeds maximum length (255 chars)"
-    | otherwise = return $ LifecycleID t
+    | otherwise = pure $ LifecycleID t
 
 -- | Smart constructor for 'CORSRule'. Ensures that both origins and header names
 -- contain a maximum of one wildcard and removes duplicates from both headers and
@@ -377,20 +382,20 @@ mkCORSRule origin ms hs
         $ OtherError "CORSRule: maximum of one wildcard permitted in origins"
     | or ((> 1) . C.count '*' . CI.original <$> hs) = throwM
         $ OtherError "CORSRule: maximum of one wildcard permitted in headers"
-    | otherwise = return CORSRule
-                         { allowedOrigin  = origin
-                         , allowedMethods = nubOrd ms
-                         , allowedHeaders = nubOrd hs
-                         }
+    | otherwise = pure CORSRule
+                       { allowedOrigin  = origin
+                       , allowedMethods = nubOrd ms
+                       , allowedHeaders = nubOrd hs
+                       }
 
 -- | Represents some resource that has been canonicalized according to the
 -- Spaces/AWS v4 spec
 newtype Canonicalized a = Canonicalized { unCanonicalized :: ByteString }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 -- | Different types of computed 'ByteString's
 data ComputedTag = Hash | StrToSign | Sig | Cred | Auth
-    deriving ( Show, Eq )
+    deriving stock ( Show, Eq )
 
 -- | A strict 'ByteString' that has been computed according to some part of
 -- the AWS v4 spec. The AWS v4 signature is calculated from a series of
@@ -412,9 +417,9 @@ data Computed (a :: ComputedTag) where
     -- your request
     Authorization :: ByteString -> Computed 'Auth
 
-deriving instance Show (Computed a)
+deriving stock instance Show (Computed a)
 
-deriving instance Eq (Computed a)
+deriving stock instance Eq (Computed a)
 
 type StringToSign = Computed 'StrToSign
 
@@ -437,11 +442,11 @@ uncompute = \case
 
 -- | Spaces access key
 newtype AccessKey = AccessKey { unAccessKey :: ByteString }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 -- | Spaces secret key
 newtype SecretKey = SecretKey { unSecretKey :: ByteString }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 -- | The name of a per-project configuration profile to select when loading
 -- credentials from a file
@@ -457,7 +462,7 @@ class Monad m => Action m a where
 
 -- A response, before being transformed into a 'ConsumedResponse'
 data RawResponse m = RawResponse { headers :: [Header], body :: BodyBS m }
-    deriving ( Generic )
+    deriving stock ( Generic )
 
 -- | A request or response body
 type BodyBS m = ConduitT () ByteString m ()
@@ -471,11 +476,11 @@ data SpacesMetadata = SpacesMetadata
     , date      :: Maybe UTCTime
     , status    :: Status -- ^ HTTP status
     }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 -- | Whether or not to retain 'SpacesMetadata' when consuming responses
 data WithMetadata = KeepMetadata | NoMetadata
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 -- | A 'ConsumedResponse' with optional 'SpacesMetadata'
 data SpacesResponse a = SpacesResponse
@@ -485,9 +490,9 @@ data SpacesResponse a = SpacesResponse
       -- ^ 'SpacesMetadata', the retention of which can be controlled using
       -- 'WithMetadata'
     }
-    deriving ( Generic )
+    deriving stock ( Generic )
 
-deriving instance (Show (ConsumedResponse a)) => Show (SpacesResponse a)
+deriving stock instance (Show (ConsumedResponse a)) => Show (SpacesResponse a)
 
 -- This instance is necessary to make the polymorphic @result@ field work with
 -- HasField
@@ -515,7 +520,7 @@ data CredentialSource
 data CannedACL
     = Private -- ^ No unauthenticated public access
     | PublicRead -- ^ Unauthenticated public read access permitted
-    deriving ( Eq, Show )
+    deriving stock ( Eq, Show )
 
 -- | The base 'Exception' type for both 'ClientException's and 'APIException's
 data SpacesException = forall e. Exception e => SpacesException e
@@ -542,7 +547,7 @@ data ClientException
       -- lazy 'LB.ByteString'
     | HTTPStatus Status LB.ByteString
     | OtherError Text
-    deriving ( Show, Eq, Generic, Typeable )
+    deriving stock ( Show, Eq, Generic, Typeable )
 
 instance Exception ClientException where
     toException = spsExToException
@@ -556,7 +561,7 @@ data APIException = APIException
     , requestID :: RequestID -- ^ The unique ID of the request
     , hostID    :: Text
     }
-    deriving ( Show, Eq, Generic, Typeable )
+    deriving stock ( Show, Eq, Generic, Typeable )
 
 instance Exception APIException where
     toException = spsExToException

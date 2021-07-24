@@ -1,6 +1,8 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
@@ -28,40 +30,33 @@ import qualified Data.Text               as T
 import           GHC.Generics            ( Generic )
 
 import           Network.DO.Spaces.Types
-                 ( Action(..)
-                 , Bucket
-                 , MonadSpaces
-                 , Region(..)
-                 , SpacesRequestBuilder(..)
-                 )
-import           Network.DO.Spaces.Utils ( slugToRegion
-                                         , xmlDocCursor
-                                         , xmlElemError
-                                         )
+import           Network.DO.Spaces.Utils
 import qualified Network.HTTP.Types      as H
 
 import qualified Text.XML.Cursor         as X
 import           Text.XML.Cursor         ( ($.//), (&/), (&|) )
 
 -- | Query the location (the 'Region') of a 'Bucket'
-data GetBucketLocation = GetBucketLocation
+newtype GetBucketLocation = GetBucketLocation
     { bucket :: Bucket
       -- ^ The name of the 'Bucket' whose location you'd like to retrieve
     }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Generic )
+    deriving newtype ( Eq )
 
-data GetBucketLocationResponse = GetBucketLocationResponse
+newtype GetBucketLocationResponse = GetBucketLocationResponse
     { locationConstraint :: Region
       -- ^ The 'Region' of the queried 'Bucket'
     }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Generic )
+    deriving newtype ( Eq )
 
 instance MonadSpaces m => Action m GetBucketLocation where
     type ConsumedResponse GetBucketLocation = GetBucketLocationResponse
 
     buildRequest GetBucketLocation { .. } = do
         spaces <- ask
-        return SpacesRequestBuilder
+        pure SpacesRequestBuilder
                { bucket         = Just bucket
                , method         = Nothing
                , body           = Nothing

@@ -1,7 +1,9 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
@@ -28,16 +30,11 @@ import           Data.ByteString         ( ByteString )
 import           GHC.Generics            ( Generic )
 
 import           Network.DO.Spaces.Types
-                 ( Action(..)
-                 , Bucket
-                 , Method(DELETE)
-                 , MonadSpaces
-                 , SpacesRequestBuilder(..)
-                 )
 import qualified Network.HTTP.Types      as H
 
-data DeleteBucketLifecycle = DeleteBucketLifecycle { bucket :: Bucket }
-    deriving ( Show, Eq, Generic )
+newtype DeleteBucketLifecycle = DeleteBucketLifecycle { bucket :: Bucket }
+    deriving stock ( Show, Generic )
+    deriving newtype ( Eq )
 
 type DeleteBucketLifecycleResponse = ()
 
@@ -46,7 +43,7 @@ instance MonadSpaces m => Action m DeleteBucketLifecycle where
 
     buildRequest DeleteBucketLifecycle { .. } = do
         spaces <- ask
-        return SpacesRequestBuilder
+        pure SpacesRequestBuilder
                { bucket         = Just bucket
                , method         = Just DELETE
                , body           = Nothing
@@ -62,4 +59,4 @@ instance MonadSpaces m => Action m DeleteBucketLifecycle where
                , ..
                }
 
-    consumeResponse _ = return ()
+    consumeResponse _ = pure ()

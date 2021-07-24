@@ -1,7 +1,9 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
@@ -28,17 +30,12 @@ import           Data.ByteString         ( ByteString )
 import           GHC.Generics            ( Generic )
 
 import           Network.DO.Spaces.Types
-                 ( Action(..)
-                 , Bucket
-                 , Method(DELETE)
-                 , MonadSpaces
-                 , SpacesRequestBuilder(..)
-                 )
 import qualified Network.HTTP.Types      as H
 
 -- | Delete all of a 'Bucket'\'s configured 'Network.DO.Spaces.Types.CORSRule's
-data DeleteBucketCORS = DeleteBucketCORS { bucket :: Bucket }
-    deriving ( Show, Eq, Generic )
+newtype DeleteBucketCORS = DeleteBucketCORS { bucket :: Bucket }
+    deriving stock ( Show, Generic )
+    deriving newtype ( Eq )
 
 type DeleteBucketCORSResponse = ()
 
@@ -47,7 +44,7 @@ instance MonadSpaces m => Action m DeleteBucketCORS where
 
     buildRequest DeleteBucketCORS { .. } = do
         spaces <- ask
-        return SpacesRequestBuilder
+        pure SpacesRequestBuilder
                { bucket         = Just bucket
                , method         = Just DELETE
                , body           = Nothing
@@ -63,4 +60,4 @@ instance MonadSpaces m => Action m DeleteBucketCORS where
                , ..
                }
 
-    consumeResponse _ = return ()
+    consumeResponse _ = pure ()

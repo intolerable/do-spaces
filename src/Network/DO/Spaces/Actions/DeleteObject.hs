@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -25,17 +26,10 @@ import           Control.Monad.Reader    ( MonadReader(ask) )
 import           GHC.Generics            ( Generic )
 
 import           Network.DO.Spaces.Types
-                 ( Action(..)
-                 , Bucket
-                 , Method(DELETE)
-                 , MonadSpaces
-                 , Object
-                 , SpacesRequestBuilder(..)
-                 )
 
 -- | Delete a single 'Object'
 data DeleteObject = DeleteObject { bucket :: Bucket, object :: Object }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 type DeleteObjectResponse = ()
 
@@ -44,7 +38,7 @@ instance MonadSpaces m => Action m DeleteObject where
 
     buildRequest DeleteObject { .. } = do
         spaces <- ask
-        return SpacesRequestBuilder
+        pure SpacesRequestBuilder
                { bucket         = Just bucket
                , object         = Just object
                , method         = Just DELETE
@@ -56,4 +50,4 @@ instance MonadSpaces m => Action m DeleteObject where
                , ..
                }
 
-    consumeResponse _ = return ()
+    consumeResponse _ = pure ()

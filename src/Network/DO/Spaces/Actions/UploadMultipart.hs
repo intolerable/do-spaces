@@ -1,7 +1,9 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -51,32 +53,7 @@ import           GHC.Generics                ( Generic )
 import           Lens.Micro                  ( (^.), (^?) )
 
 import           Network.DO.Spaces.Types
-                 ( Action(..)
-                 , Bucket
-                 , ClientException(OtherError)
-                 , ETag
-                 , Method(POST, DELETE, PUT)
-                 , MonadSpaces
-                 , Object
-                 , SpacesRequestBuilder(..)
-                 , UploadHeaders
-                 )
 import           Network.DO.Spaces.Utils
-                 ( bucketP
-                 , etagP
-                 , isTruncP
-                 , lastModifiedP
-                 , lookupHeader
-                 , mkNode
-                 , objectP
-                 , quote
-                 , readEtag
-                 , renderUploadHeaders
-                 , tshow
-                 , xmlDocCursor
-                 , xmlElemError
-                 , xmlNum
-                 )
 import           Network.HTTP.Client.Conduit ( RequestBody(RequestBodyLBS) )
 import qualified Network.HTTP.Types          as H
 import           Network.Mime                ( MimeType )
@@ -92,14 +69,14 @@ data Part = Part
     , etag         :: ETag
     , size         :: Int -- ^ Size in bytes
     }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 data MultipartSession = MultipartSession
     { bucket   :: Bucket
     , object   :: Object
     , uploadID :: UploadID --
     }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 -- | A unique ID assigned to a multipart upload session
 type UploadID = Text
@@ -111,18 +88,19 @@ data BeginMultipart = BeginMultipart
     , optionalHeaders :: UploadHeaders
     , contentType     :: Maybe MimeType
     }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 newtype BeginMultipartResponse =
     BeginMultipartResponse { session :: MultipartSession }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Generic )
+    deriving newtype ( Eq )
 
 instance MonadSpaces m => Action m BeginMultipart where
     type (ConsumedResponse BeginMultipart) = BeginMultipartResponse
 
     buildRequest BeginMultipart { .. } = do
         spaces <- ask
-        return SpacesRequestBuilder
+        pure SpacesRequestBuilder
                { bucket         = Just bucket
                , object         = Just object
                , method         = Just POST
@@ -148,21 +126,21 @@ instance MonadSpaces m => Action m BeginMultipart where
         bucket <- bucketP cursor
         uploadID <- X.force (xmlElemError "UploadId")
             $ cursor $/ X.laxElement "UploadId" &/ X.content
-        return $ BeginMultipartResponse { session = MultipartSession { .. } }
+        pure $ BeginMultipartResponse { session = MultipartSession { .. } }
 
 data UploadPart = UploadPart
     { session :: MultipartSession, partNumber :: Int, body :: RequestBody }
-    deriving ( Generic )
+    deriving stock ( Generic )
 
 data UploadPartResponse = UploadPartResponse { etag :: ETag }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 instance MonadSpaces m => Action m UploadPart where
     type (ConsumedResponse UploadPart) = UploadPartResponse
 
     buildRequest UploadPart { .. } = do
         spaces <- ask
-        return SpacesRequestBuilder
+        pure SpacesRequestBuilder
                { bucket         = session ^? field @"bucket"
                , object         = session ^? field @"object"
                , body           = Just body
@@ -182,7 +160,7 @@ instance MonadSpaces m => Action m UploadPart where
                    <$> (readEtag =<< lookupHeader raw "etag"))
         >>= \case
             Nothing -> throwM $ OtherError "Missing/malformed headers"
-            Just r  -> return r
+            Just r  -> pure r
 
 -- | Complete a multipart session
 data CompleteMultipart = CompleteMultipart
@@ -190,7 +168,7 @@ data CompleteMultipart = CompleteMultipart
     , parts   :: [(Int, ETag)]
       -- ^ The part numbers and 'ETag's of each uploaded part
     }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 data CompleteMultipartResponse = CompleteMultipartResponse
     { location :: Text
@@ -200,14 +178,14 @@ data CompleteMultipartResponse = CompleteMultipartResponse
       -- ^ The MD5 hash of the final object, i.e. all of the cumulative
       -- uploaded parts
     }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 instance MonadSpaces m => Action m CompleteMultipart where
     type ConsumedResponse CompleteMultipart = CompleteMultipartResponse
 
     buildRequest CompleteMultipart { .. } = do
         spaces <- ask
-        return SpacesRequestBuilder
+        pure SpacesRequestBuilder
                { bucket         = session ^? field @"bucket"
                , object         = session ^? field @"object"
                , method         = Just POST
@@ -244,11 +222,12 @@ instance MonadSpaces m => Action m CompleteMultipart where
             $ cursor $/ X.laxElement "Location" &/ X.content
         object <- objectP cursor
         etag <- etagP cursor
-        return CompleteMultipartResponse { .. }
+        pure CompleteMultipartResponse { .. }
 
 -- | Cancel an active multipart upload session
 newtype CancelMultipart = CancelMultipart { session :: MultipartSession }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Generic )
+    deriving newtype ( Eq )
 
 type CancelMultipartResponse = ()
 
@@ -257,7 +236,7 @@ instance MonadSpaces m => Action m CancelMultipart where
 
     buildRequest CancelMultipart { .. } = do
         spaces <- ask
-        return SpacesRequestBuilder
+        pure SpacesRequestBuilder
                { bucket         = session ^? field @"bucket"
                , object         = session ^? field @"object"
                , method         = Just DELETE
@@ -273,11 +252,12 @@ instance MonadSpaces m => Action m CancelMultipart where
                , ..
                }
 
-    consumeResponse _ = return ()
+    consumeResponse _ = pure ()
 
 -- | List all of the 'Part's of a multipart upload session
 newtype ListParts = ListParts { session :: MultipartSession }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Generic )
+    deriving newtype ( Eq )
 
 data ListPartsResponse = ListPartsResponse
     { bucket         :: Bucket
@@ -291,14 +271,14 @@ data ListPartsResponse = ListPartsResponse
     , maxParts       :: Int
     , isTruncated    :: Bool
     }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 instance MonadSpaces m => Action m ListParts where
     type (ConsumedResponse ListParts) = ListPartsResponse
 
     buildRequest ListParts { .. } = do
         spaces <- ask
-        return SpacesRequestBuilder
+        pure SpacesRequestBuilder
                { bucket         = session ^? field @"bucket"
                , object         = session ^? field @"object"
                , method         = Nothing
@@ -327,7 +307,7 @@ instance MonadSpaces m => Action m ListParts where
         partMarker <- xmlNum "PartNumberMarker" cursor
         nextPartMarker <- xmlNum "NextPartNumberMarker" cursor
 
-        return ListPartsResponse { .. }
+        pure ListPartsResponse { .. }
       where
         partP c = Part <$> xmlNum "PartNumber" c
             <*> lastModifiedP c

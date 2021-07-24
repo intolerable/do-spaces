@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -31,31 +32,23 @@ import           Data.Conduit.Binary     ( sinkLbs )
 import           GHC.Generics            ( Generic )
 
 import           Network.DO.Spaces.Types
-                 ( Action(..)
-                 , Bucket
-                 , MonadSpaces
-                 , Object
-                 , ObjectMetadata
-                 , RawResponse(..)
-                 , SpacesRequestBuilder(..)
-                 )
-import           Network.DO.Spaces.Utils ( lookupObjectMetadata )
+import           Network.DO.Spaces.Utils
 
 -- | Retrieve an 'Object' along with its associated metadata. The object's data
 -- is read into a lazy 'LB.ByteString'
 data GetObject = GetObject { bucket :: Bucket, object :: Object }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 data GetObjectResponse = GetObjectResponse
     { objectMetadata :: ObjectMetadata, objectData :: LB.ByteString }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 instance MonadSpaces m => Action m GetObject where
     type ConsumedResponse GetObject = GetObjectResponse
 
     buildRequest GetObject { .. } = do
         spaces <- ask
-        return SpacesRequestBuilder
+        pure SpacesRequestBuilder
                { bucket         = Just bucket
                , object         = Just object
                , method         = Nothing

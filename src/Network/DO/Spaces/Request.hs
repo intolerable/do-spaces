@@ -103,7 +103,7 @@ newSpacesRequest SpacesRequestBuilder { .. } time = do
                                            (fromMaybe mempty queryString)
                                            request
                                            payloadHash
-    return
+    pure
         $ SpacesRequest
         { method = reqMethod, headers = headers <> newHeaders, .. }
   where

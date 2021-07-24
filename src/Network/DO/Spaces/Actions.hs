@@ -127,7 +127,7 @@ runAction withMD action = do
                     =<< runConduit (body .| sinkLbs)
 
         result <- consumeResponse @_ @a raw
-        return SpacesResponse { .. }
+        pure SpacesResponse { .. }
 
 parseErrorResponse
     :: (MonadThrow m, MonadIO m) => Status -> RawResponse m -> m APIException
@@ -139,5 +139,5 @@ parseErrorResponse status raw = do
         $ cursor $/ X.laxElement "RequestId" &/ X.content
     hostID <- X.force (xmlElemError "HostId")
         $ cursor $/ X.laxElement "HostId" &/ X.content
-    return APIException { .. }
+    pure APIException { .. }
 

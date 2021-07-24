@@ -168,9 +168,9 @@ newSpaces
 newSpaces region cs = do
     manager <- liftIO getGlobalManager
     (accessKey, secretKey) <- liftIO $ source cs
-    return Spaces { .. }
+    pure Spaces { .. }
   where
-    source (Explicit ak sk) = return (ak, sk)
+    source (Explicit ak sk) = pure (ak, sk)
     source (FromEnv (Just (akEnv, skEnv))) =
         ensureKeys =<< (,) <$> lookupKey akEnv <*> lookupKey skEnv
     source (FromEnv Nothing) = do
@@ -190,7 +190,7 @@ newSpaces region cs = do
         case I.parseIniFile contents parseConf of
             Left _   ->
                 throwM $ ConfigurationError "Failed to read credentials file"
-            Right ks -> return
+            Right ks -> pure
                 $ bimap (coerce . T.encodeUtf8) (coerce . T.encodeUtf8) ks
       where
         parseConf = I.section (fromMaybe "default" profile)
@@ -204,7 +204,7 @@ newSpaces region cs = do
     lookupKey = lookupEnv . T.unpack
 
     ensureKeys = \case
-        (Just a, Just s) -> return (mkKey AccessKey a, mkKey SecretKey s)
+        (Just a, Just s) -> pure (mkKey AccessKey a, mkKey SecretKey s)
         (Just _, _)      -> throwMissingKeys "secret key"
         (_, Just _)      -> throwMissingKeys "access key"
         (_, _)           -> throwMissingKeys "secret and access keys"
@@ -257,7 +257,7 @@ multipartObject contentType bucket object size body
     putPart session = go 1
       where
         go n = await >>= \case
-            Nothing -> return ()
+            Nothing -> pure ()
             Just v  -> do
                 spaces <- ask
                 etag <- liftIO
@@ -450,8 +450,8 @@ listBucketRec bucket = go mempty Nothing
         case nextMarker of
             Just _
                 | isTruncated -> go (os <> objects) nextMarker
-                | otherwise -> return $ os <> objects
-            Nothing -> return $ os <> objects
+                | otherwise -> pure $ os <> objects
+            Nothing -> pure $ os <> objects
 
 -- | Get the 'CORSRule's configured for a given 'Bucket'
 getBucketCORS :: MonadSpaces m => Bucket -> m (SpacesResponse GetBucketCORS)

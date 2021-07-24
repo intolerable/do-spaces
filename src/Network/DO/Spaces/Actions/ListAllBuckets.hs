@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -29,47 +30,35 @@ import qualified Data.Sequence           as S
 import           GHC.Generics            ( Generic )
 
 import           Network.DO.Spaces.Types
-                 ( Action(..)
-                 , Bucket(Bucket)
-                 , BucketInfo(..)
-                 , MonadSpaces
-                 , Owner(..)
-                 , SpacesRequestBuilder(..)
-                 )
 import           Network.DO.Spaces.Utils
-                 ( ownerP
-                 , xmlDocCursor
-                 , xmlElemError
-                 , xmlUTCTime
-                 )
 
 import qualified Text.XML.Cursor         as X
 import           Text.XML.Cursor         ( ($/), (&/), (&|) )
 
 -- | List all of your 'Bucket's withing the 'Network.DO.Spaces.Region' you have configured
 data ListAllBuckets = ListAllBuckets
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 data ListAllBucketsResponse =
     ListAllBucketsResponse { owner :: Owner, buckets :: Seq BucketInfo }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 instance MonadSpaces m => Action m ListAllBuckets where
     type ConsumedResponse ListAllBuckets = ListAllBucketsResponse
 
     buildRequest _ = do
         spaces <- ask
-        return SpacesRequestBuilder
-               { body           = Nothing
-               , method         = Nothing
-               , object         = Nothing
-               , queryString    = Nothing
-               , subresources   = Nothing
-               , bucket         = Nothing
-               , headers        = mempty
-               , overrideRegion = Nothing
-               , ..
-               }
+        pure SpacesRequestBuilder
+             { body           = Nothing
+             , method         = Nothing
+             , object         = Nothing
+             , queryString    = Nothing
+             , subresources   = Nothing
+             , bucket         = Nothing
+             , headers        = mempty
+             , overrideRegion = Nothing
+             , ..
+             }
 
     consumeResponse raw = do
         cursor <- xmlDocCursor raw
@@ -77,7 +66,7 @@ instance MonadSpaces m => Action m ListAllBuckets where
             $ cursor $/ X.laxElement "Owner" &| ownerP
         bs <- X.force (xmlElemError "Buckets")
             $ cursor $/ X.laxElement "Buckets" &| bucketsP
-        return ListAllBucketsResponse { buckets = S.fromList bs, .. }
+        pure ListAllBucketsResponse { buckets = S.fromList bs, .. }
       where
         bucketsP c = X.forceM (xmlElemError "Bucket") . sequence
             $ c $/ X.laxElement "Bucket" &| bucketInfoP
@@ -87,4 +76,4 @@ instance MonadSpaces m => Action m ListAllBuckets where
                 $ c $/ X.laxElement "Name" &/ X.content &| coerce
             creationDate <- X.forceM (xmlElemError "Creation date")
                 $ c $/ X.laxElement "CreationDate" &/ X.content &| xmlUTCTime
-            return BucketInfo { .. }
+            pure BucketInfo { .. }

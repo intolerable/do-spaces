@@ -1,7 +1,9 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -36,21 +38,7 @@ import qualified Data.Text               as T
 import           GHC.Generics            ( Generic )
 
 import           Network.DO.Spaces.Types
-                 ( Action(..)
-                 , Bucket
-                 , ClientException(InvalidXML)
-                 , LifecycleExpiration(AfterDays, OnDate)
-                 , LifecycleID(LifecycleID)
-                 , LifecycleRule(..)
-                 , MonadSpaces
-                 , SpacesRequestBuilder(..)
-                 )
 import           Network.DO.Spaces.Utils
-                 ( xmlDocCursor
-                 , xmlElemError
-                 , xmlMaybeElem
-                 , xmlUTCTime
-                 )
 import qualified Network.HTTP.Types      as H
 
 import           Text.Read               ( readMaybe )
@@ -62,19 +50,21 @@ import           Text.XML.Cursor.Generic ( Cursor )
 -- | Get the 'LifecycleRule' configuration for a 'Bucket'. Note that unless
 -- you have explicitly configured lifecycle rules, this will fail with a 404
 -- status and an error code of @NoSuchLifecycleConfiguration@
-data GetBucketLifecycle = GetBucketLifecycle { bucket :: Bucket }
-    deriving ( Show, Eq, Generic )
+newtype GetBucketLifecycle = GetBucketLifecycle { bucket :: Bucket }
+    deriving stock ( Show, Generic )
+    deriving newtype ( Eq )
 
-data GetBucketLifecycleResponse =
+newtype GetBucketLifecycleResponse =
     GetBucketLifecycleResponse { rules :: [LifecycleRule] }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Generic )
+    deriving newtype ( Eq )
 
 instance MonadSpaces m => Action m GetBucketLifecycle where
     type ConsumedResponse GetBucketLifecycle = GetBucketLifecycleResponse
 
     buildRequest GetBucketLifecycle { .. } = do
         spaces <- ask
-        return SpacesRequestBuilder
+        pure SpacesRequestBuilder
                { bucket         = Just bucket
                , method         = Nothing
                , body           = Nothing
@@ -101,7 +91,7 @@ ruleP c = do
         $ c $/ X.laxElement "ID" &/ X.content &| coerce
     enabled <- X.forceM (xmlElemError "Status")
         $ c $/ X.laxElement "Status" &/ X.content &| readStatus
-    return LifecycleRule { .. }
+    pure LifecycleRule { .. }
   where
     prefix = xmlMaybeElem c "Prefix"
 
@@ -116,8 +106,8 @@ ruleP c = do
         &| (readMaybe . T.unpack)
 
     readStatus = \case
-        "Enabled"  -> return True
-        "Disabled" -> return False
+        "Enabled"  -> pure True
+        "Disabled" -> pure False
         _          -> throwM $ InvalidXML "GetBucketLifecycle: invalid Status"
 
     -- TODO find a less hideous way of doing this

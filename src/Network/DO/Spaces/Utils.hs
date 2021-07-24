@@ -119,11 +119,11 @@ regionSlug = \case
 
 slugToRegion :: MonadThrow m => Text -> m Region
 slugToRegion = \case
-    "nyc3" -> return NewYork
-    "ams3" -> return Amsterdam
-    "sfo3" -> return SanFrancisco
-    "sgp1" -> return Singapore
-    "fra1" -> return Frankfurt
+    "nyc3" -> pure NewYork
+    "ams3" -> pure Amsterdam
+    "sfo3" -> pure SanFrancisco
+    "sgp1" -> pure Singapore
+    "fra1" -> pure Frankfurt
     reg    -> throwM . OtherError $ "Unrecognized region " <> quote reg
 
 -- | Map 'ByteString' chars to lower-case
@@ -156,12 +156,12 @@ showPermission = \case
     FullControl -> "FULL_CONTROL"
 
 handleMaybe :: MonadCatch m => (a -> m b) -> a -> m (Maybe b)
-handleMaybe g x = handleAll (\_ -> return Nothing) (Just <$> g x)
+handleMaybe g x = handleAll (\_ -> pure Nothing) (Just <$> g x)
 
 -- | Convert a 'RequestBody' to a 'Data.ByteString.Lazy.ByteString'
 bodyLBS :: MonadThrow m => RequestBody -> m LB.ByteString
-bodyLBS (RequestBodyBS b)   = return $ LB.fromStrict b
-bodyLBS (RequestBodyLBS lb) = return lb
+bodyLBS (RequestBodyBS b)   = pure $ LB.fromStrict b
+bodyLBS (RequestBodyLBS lb) = pure lb
 bodyLBS _                   =
     throwM $ InvalidRequest "Unsupported request body type"
 
@@ -188,7 +188,7 @@ ownerP :: MonadThrow m => Cursor Node -> m Owner
 ownerP c = do
     id' <- X.forceM (xmlElemError "ID")
         $ c $/ X.laxElement "ID" &/ X.content &| xmlInt @_ @OwnerID
-    return Owner { displayName = id', id' }
+    pure Owner { displayName = id', id' }
 
 -- | XML parser for 'ETag' attribute
 etagP :: MonadThrow m => Cursor Node -> m ETag
@@ -203,7 +203,7 @@ lastModifiedP c = X.forceM (xmlElemError "LastModified")
 -- | Read a 'Num' type from 'Text'
 xmlInt :: (MonadThrow m, Num a) => Text -> m a
 xmlInt txt = case readMaybe $ T.unpack txt of
-    Just n  -> return $ fromInteger n
+    Just n  -> pure $ fromInteger n
     Nothing -> throwM $ InvalidXML "Failed to read integer value"
 
 -- | Read a 'Num' type, encoded as an integer, from XML
@@ -214,7 +214,7 @@ xmlNum name c = X.forceM (xmlElemError name)
 -- | Read a 'UTCTime' from an ISO-O8601-formatted 'Text'
 xmlUTCTime :: MonadThrow m => Text -> m UTCTime
 xmlUTCTime txt = case iso8601ParseM $ T.unpack txt of
-    Just t  -> return t
+    Just t  -> pure t
     Nothing -> throwM $ InvalidXML "Failed to read ISO-8601 value"
 
 isTruncP :: MonadThrow m => Cursor Node -> m Bool
@@ -250,27 +250,27 @@ lookupObjectMetadata raw = do
         <*> (readEtag =<< lookupHeader' "Etag")
         <*> (readDate =<< lookupHeader' "Last-Modified")
     case metadata of
-        Just md -> return md
+        Just md -> pure md
         Nothing -> throwM $ OtherError "Missing/malformed headers"
   where
     lookupHeader' = lookupHeader raw
 
-    readDate      = MaybeT . return . parseAmzTime . C.unpack
+    readDate      = MaybeT . pure . parseAmzTime . C.unpack
 
 parseAmzTime :: [Char] -> Maybe UTCTime
 parseAmzTime = parseTimeM True defaultTimeLocale "%a, %d %b %Y %H:%M:%S %EZ"
 
 -- | Lookup the value of a 'HeaderName' from a 'RawResponse' in a monadic context
 lookupHeader :: Monad m => RawResponse m -> HeaderName -> MaybeT m ByteString
-lookupHeader raw = MaybeT . return . flip lookup (raw ^. field @"headers")
+lookupHeader raw = MaybeT . pure . flip lookup (raw ^. field @"headers")
 
 -- | Transform a 'Header' value into an 'ETag'
 readEtag :: Monad m => ByteString -> MaybeT m ETag
-readEtag = MaybeT . return . fmap unquote . eitherToMaybe . T.decodeUtf8'
+readEtag = MaybeT . pure . fmap unquote . eitherToMaybe . T.decodeUtf8'
 
 -- | Transform a 'Header' value into an 'Int' (for @Content-Length@)
 readContentLen :: Monad m => ByteString -> MaybeT m Int
-readContentLen = MaybeT . return . readMaybe @Int . C.unpack
+readContentLen = MaybeT . pure . readMaybe @Int . C.unpack
 
 aclP :: MonadThrow m => Cursor Node -> m ACLResponse
 aclP cursor = ACLResponse
@@ -289,14 +289,14 @@ aclP cursor = ACLResponse
              $ c $/ X.laxElement "Grantee" &| granteeP)
       where
         readPerm = \case
-            "FULL_CONTROL" -> return FullControl
-            "READ"         -> return ReadOnly
+            "FULL_CONTROL" -> pure FullControl
+            "READ"         -> pure ReadOnly
             _              ->
                 throwM $ InvalidXML "Unrecognized ACL Permission"
 
     granteeP c = case X.node c of
         X.NodeElement (X.Element _ as _) -> case M.lookup typeName as of
-            Just "Group" -> return Group
+            Just "Group" -> pure Group
             Just "CanonicalUser" -> CanonicalUser <$> ownerP c
             _ -> throwM $ InvalidXML "Invalid ACL Grantee type"
         _ -> throwM $ InvalidXML "Invalid ACL Grantee"

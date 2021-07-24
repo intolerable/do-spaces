@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -29,15 +30,7 @@ import           Data.ByteString             ( ByteString )
 import           GHC.Generics                ( Generic )
 
 import           Network.DO.Spaces.Types
-                 ( Action(..)
-                 , Bucket
-                 , Grant(..)
-                 , Method(PUT)
-                 , MonadSpaces
-                 , Owner
-                 , SpacesRequestBuilder(..)
-                 )
-import           Network.DO.Spaces.Utils     ( writeACLSetter )
+import           Network.DO.Spaces.Utils
 import           Network.HTTP.Client.Conduit ( RequestBody(RequestBodyLBS) )
 import qualified Network.HTTP.Types          as H
 
@@ -46,7 +39,7 @@ data SetBucketACLs = SetBucketACLs
     , acls   :: [Grant]
     , owner  :: Owner -- ^ The bucket owner
     }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 type SetBucketACLsResponse = ()
 
@@ -55,7 +48,7 @@ instance MonadSpaces m => Action m SetBucketACLs where
 
     buildRequest sba@SetBucketACLs { .. } = do
         spaces <- ask
-        return SpacesRequestBuilder
+        pure SpacesRequestBuilder
                { bucket         = Just bucket
                , method         = Just PUT
                , object         = Nothing
@@ -71,4 +64,4 @@ instance MonadSpaces m => Action m SetBucketACLs where
                , ..
                }
 
-    consumeResponse _ = return ()
+    consumeResponse _ = pure ()

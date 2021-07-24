@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -26,20 +27,12 @@ import           Control.Monad.Reader    ( MonadReader(ask) )
 import           GHC.Generics            ( Generic )
 
 import           Network.DO.Spaces.Types
-                 ( Action(..)
-                 , Bucket
-                 , Method(HEAD)
-                 , MonadSpaces
-                 , Object
-                 , ObjectMetadata(..)
-                 , SpacesRequestBuilder(..)
-                 )
-import           Network.DO.Spaces.Utils ( lookupObjectMetadata )
+import           Network.DO.Spaces.Utils
 
 -- | Get information about an 'Object'; the response does not contain the
 -- object itself
 data GetObjectInfo = GetObjectInfo { bucket :: Bucket, object :: Object }
-    deriving ( Show, Eq, Generic )
+    deriving stock ( Show, Eq, Generic )
 
 type GetObjectInfoResponse = ObjectMetadata
 
@@ -48,7 +41,7 @@ instance MonadSpaces m => Action m GetObjectInfo where
 
     buildRequest GetObjectInfo { .. } = do
         spaces <- ask
-        return SpacesRequestBuilder
+        pure SpacesRequestBuilder
                { bucket         = Just bucket
                , object         = Just object
                , method         = Just HEAD

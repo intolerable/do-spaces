@@ -1,7 +1,9 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
@@ -34,14 +36,7 @@ import qualified Data.Text.Encoding      as T
 import           GHC.Generics            ( Generic )
 
 import           Network.DO.Spaces.Types
-                 ( Action(..)
-                 , Bucket
-                 , CORSRule(..)
-                 , MonadSpaces
-                 , SpacesRequestBuilder(..)
-                 , mkCORSRule
-                 )
-import           Network.DO.Spaces.Utils ( xmlDocCursor, xmlElemError )
+import           Network.DO.Spaces.Utils
 import qualified Network.HTTP.Types      as H
 
 import           Text.Read               ( readMaybe )
@@ -49,18 +44,21 @@ import qualified Text.XML.Cursor         as X
 import           Text.XML.Cursor         ( ($/), (&/), (&|) )
 
 -- | Get the 'CORSRule's associated with a 'Bucket'
-data GetBucketCORS = GetBucketCORS { bucket :: Bucket }
-    deriving ( Show, Eq, Generic )
+newtype GetBucketCORS = GetBucketCORS { bucket :: Bucket }
+    deriving stock ( Show, Generic )
+    deriving newtype ( Eq )
 
-data GetBucketCORSResponse = GetBucketCORSResponse { rules :: Seq CORSRule }
-    deriving ( Show, Eq, Generic )
+newtype GetBucketCORSResponse =
+    GetBucketCORSResponse { rules :: Seq CORSRule }
+    deriving stock ( Show, Generic )
+    deriving newtype ( Eq )
 
 instance MonadSpaces m => Action m GetBucketCORS where
     type ConsumedResponse GetBucketCORS = GetBucketCORSResponse
 
     buildRequest GetBucketCORS { .. } = do
         spaces <- ask
-        return SpacesRequestBuilder
+        pure SpacesRequestBuilder
                { bucket         = Just bucket
                , method         = Nothing
                , body           = Nothing
