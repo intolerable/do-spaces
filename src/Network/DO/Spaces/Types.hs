@@ -495,7 +495,7 @@ data SpacesResponse a = SpacesResponse
 deriving stock instance (Show (ConsumedResponse a)) => Show (SpacesResponse a)
 
 -- This instance is necessary to make the polymorphic @result@ field work with
--- HasField
+-- @HasField@
 instance {-# OVERLAPPING #-}( GL.HasField' name (SpacesResponse a) s
                             , s ~ t
                             , a ~ b
@@ -509,7 +509,9 @@ type RequestID = Text
 -- | How to discover the 'Region', 'AccessKey', and 'SecretKey' when creating a
 -- new 'Spaces' client.
 data CredentialSource
-    = FromEnv (Maybe (Text, Text, Text))
+    = Discover
+      -- ^ Try a sequence of different sources until one succeeds
+    | FromEnv (Maybe (Text, Text, Text))
       -- ^ 'Region', 'AccessKey' and 'SecretKey' env vars
     | FromFile FilePath (Maybe Profile)
       -- ^ Load your credentials from a file, optionally providing the profile

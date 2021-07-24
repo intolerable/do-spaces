@@ -117,20 +117,24 @@ import           Network.Mime
                  , mimeByExt
                  )
 
-import           System.Environment          ( lookupEnv )
 import qualified System.FilePath             as F
 
+import           UnliftIO.Directory
+import           UnliftIO.Environment
+
 -- | Perform a transaction using your 'Spaces' client configuration. Note that
--- this does /not/ perform any exception handling; if caught at the lower level,
+-- this does not perform any exception handling; if caught at the lower level,
 -- exceptions are generally re-thrown as 'SpacesException's
---
--- To run a 'SpacesT' action with arguments in the opposite order, you can use
--- 'runSpacesT' directly
 runSpaces :: Spaces -> SpacesT m a -> m a
 runSpaces = flip runSpacesT
 
 -- | Create a new 'Spaces' by specifying a method to retrieve the region and
--- your credentials:
+-- your credentials.
+--
+-- 'Discover' will first try to find a credentials file (see the notes on 'FromFile'
+-- below) in @~/.aws/credentials@ or @$XDG_CONFIG_HOME/do-spaces/credentials@, in
+-- that order, using the @[default]@ profile. Failing that, it will try the equivalent
+-- of @FromEnv Nothing@ (see the notes below).
 --
 -- 'FromFile' expects a configuration file in the same format as AWS credentials
 -- files, with the same field names. For example:
@@ -171,10 +175,21 @@ newSpaces cs = do
     (region, accessKey, secretKey) <- liftIO $ source cs
     pure Spaces { .. }
 
-source :: (MonadIO m, MonadThrow m)
+source :: (MonadIO m, MonadCatch m)
        => CredentialSource
        -> m (Region, AccessKey, SecretKey)
 source = \case
+    Discover -> catch @_ @ClientException tryFile $ const tryEnv
+      where
+        tryFile = do
+            cfgDir <- getXdgDirectory XdgConfig "do-spaces"
+            findFile [ ".aws", cfgDir ] "credentials" >>= \case
+                Nothing ->
+                    throwM $ ConfigurationError "No credentials file found"
+                Just fp -> source $ FromFile fp Nothing
+
+        tryEnv  = source $ FromEnv Nothing
+
     Explicit region ak sk -> pure (region, ak, sk)
 
     FromEnv (Just (region, a, s)) -> ensureVars
@@ -207,9 +222,9 @@ source = \case
             <*> (fmap T.unpack <$> I.fieldMb "aws_access_key_id")
             <*> (fmap T.unpack <$> I.fieldMb "aws_secret_access_key")
   where
-    lookupVars xs = asum <$> sequence (liftIO . lookupEnv <$> xs)
+    lookupVars xs = asum <$> sequence (lookupEnv <$> xs)
 
-    lookupVar     = liftIO . lookupEnv . T.unpack
+    lookupVar     = lookupEnv . T.unpack
 
     ensureVars    = \case
         (Just r, Just a, Just s) -> do

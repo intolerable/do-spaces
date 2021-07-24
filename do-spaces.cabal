@@ -61,6 +61,7 @@ library
     , text               ^>=1.2
     , time               >=1.8  && <1.13
     , transformers       >=0.5
+    , unliftio           ^>=0.2
     , xml-conduit        >=1.8  && <1.10
 
   exposed-modules:
