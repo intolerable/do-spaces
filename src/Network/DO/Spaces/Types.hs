@@ -506,14 +506,15 @@ instance {-# OVERLAPPING #-}( GL.HasField' name (SpacesResponse a) s
 -- | A unique ID that is assigned to each request
 type RequestID = Text
 
--- | How to discover 'AccessKey's and 'SecretKey's when creating a new 'Spaces'
--- client.
+-- | How to discover the 'Region', 'AccessKey', and 'SecretKey' when creating a
+-- new 'Spaces' client.
 data CredentialSource
-    = FromEnv (Maybe (Text, Text)) -- ^ 'AccessKey' and 'SecretKey' env vars
+    = FromEnv (Maybe (Text, Text, Text))
+      -- ^ 'Region', 'AccessKey' and 'SecretKey' env vars
     | FromFile FilePath (Maybe Profile)
       -- ^ Load your credentials from a file, optionally providing the profile
       -- to use (or @default@ as the... default).
-    | Explicit AccessKey SecretKey -- ^ Provide both keys explicitly
+    | Explicit Region AccessKey SecretKey -- ^ Provide all values explicitly
 
 -- | \"Canned\" access controls; Spaces doesn't support the full range offered
 -- by s3

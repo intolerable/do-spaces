@@ -117,14 +117,14 @@ regionSlug = \case
     Singapore    -> "sgp1"
     Frankfurt    -> "fra1"
 
-slugToRegion :: MonadThrow m => Text -> m Region
+slugToRegion :: (MonadThrow m, IsString a, Eq a) => a -> m Region
 slugToRegion = \case
     "nyc3" -> pure NewYork
     "ams3" -> pure Amsterdam
     "sfo3" -> pure SanFrancisco
     "sgp1" -> pure Singapore
     "fra1" -> pure Frankfurt
-    reg    -> throwM . OtherError $ "Unrecognized region " <> quote reg
+    _      -> throwM . OtherError $ "Unrecognized region "
 
 -- | Map 'ByteString' chars to lower-case
 toLowerBS :: ByteString -> ByteString

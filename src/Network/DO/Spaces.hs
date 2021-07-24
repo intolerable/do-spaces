@@ -1,4 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
@@ -83,26 +84,10 @@ module Network.DO.Spaces
     ) where
 
 import           Conduit
-                 ( (.|)
-                 , await
-                 , decodeUtf8C
-                 , runConduit
-                 , runConduitRes
-                 , sinkFileCautious
-                 , sinkLazy
-                 , sourceFile
-                 , sourceLazy
-                 , withSourceFile
-                 , yield
-                 )
 
 import           Control.Monad               ( void )
-import           Control.Monad.Catch         ( MonadThrow(throwM) )
-import           Control.Monad.Catch.Pure    ( MonadCatch(catch) )
-import           Control.Monad.IO.Class      ( MonadIO(liftIO) )
-import           Control.Monad.Reader.Class  ( ask )
+import           Control.Monad.Catch         ( MonadCatch(catch) )
 
-import           Data.Bifunctor              ( Bifunctor(bimap) )
 import           Data.Bool                   ( bool )
 import qualified Data.ByteString.Char8       as C
 import qualified Data.ByteString.Lazy        as LB
@@ -116,14 +101,13 @@ import           Data.Maybe                  ( fromMaybe )
 import           Data.Sequence               ( Seq )
 import qualified Data.Text                   as T
 import           Data.Text                   ( Text )
-import qualified Data.Text.Encoding          as T
 import qualified Data.Text.Lazy              as LT
 
 import           Lens.Micro                  ( (<&>), (^.) )
 
 import           Network.DO.Spaces.Actions
 import           Network.DO.Spaces.Types
-import           Network.DO.Spaces.Utils     ( defaultUploadHeaders )
+import           Network.DO.Spaces.Utils
 import           Network.HTTP.Client.Conduit ( RequestBody(RequestBodyLBS) )
 import           Network.HTTP.Client.TLS     ( getGlobalManager )
 import           Network.Mime
@@ -145,7 +129,7 @@ import qualified System.FilePath             as F
 runSpaces :: Spaces -> SpacesT m a -> m a
 runSpaces = flip runSpacesT
 
--- | Create a new 'Spaces' in a given 'Region' while specifying a method to retrieve
+-- | Create a new 'Spaces' by specifying a method to retrieve the region and
 -- your credentials:
 --
 -- 'FromFile' expects a configuration file in the same format as AWS credentials
@@ -154,62 +138,85 @@ runSpaces = flip runSpacesT
 -- > [default]
 -- > aws_access_key_id=AKIAIOSFODNN7EXAMPLE
 -- > aws_secret_access_key=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+-- > aws_default_region=fra1
 --
--- 'FromEnv' will look up the following environment variables to find your
--- keys:  @AWS_ACCESS_KEY_ID@ , @SPACES_ACCESS_KEY_ID@ , @SPACES_ACCESS_KEY@
--- for the 'AccessKey', and  @AWS_SECRET_ACCESS_KEY@ , @SPACES_SECRET_ACCESS_KEY@
--- , and @SPACES_SECRET_KEY@ for your 'SecretKey'. Alternatively, you can directly
--- specify the environment variables to consult.
+-- When provided with @Nothing@, 'FromEnv' will look up the following environment
+-- variables to find your region and keys:
 --
--- You can also choose to provide both keys yourself with 'Explicit'
+--     * For the 'Region':
 --
-newSpaces
-    :: (MonadThrow m, MonadIO m) => Region -> CredentialSource -> m Spaces
-newSpaces region cs = do
+--         - @AWS_DEFAULT_REGION@
+--         - @SPACES_DEFAULT_REGION@
+--
+--     * For the 'AccessKey':
+--
+--         - @AWS_ACCESS_KEY_ID@
+--         - @SPACES_ACCESS_KEY_ID@
+--         - @SPACES_ACCESS_KEY@
+--
+--     * For the 'SecretKey':
+--
+--         - @AWS_SECRET_ACCESS_KEY@
+--         - @SPACES_SECRET_ACCESS_KEY@
+--         - @SPACES_SECRET_KEY@
+--
+-- Alternatively, you can directly specify a tuple of environment variables to
+-- search for.
+--
+-- You can also choose to provide the region and both keys yourself with 'Explicit'
+--
+newSpaces :: (MonadThrow m, MonadIO m) => CredentialSource -> m Spaces
+newSpaces cs = do
     manager <- liftIO getGlobalManager
-    (accessKey, secretKey) <- liftIO $ source cs
+    (region, accessKey, secretKey) <- liftIO $ source cs
     pure Spaces { .. }
-  where
-    source (Explicit ak sk) = pure (ak, sk)
-    source (FromEnv (Just (akEnv, skEnv))) =
-        ensureKeys =<< (,) <$> lookupKey akEnv <*> lookupKey skEnv
-    source (FromEnv Nothing) = do
-        ak <- lookupKeys [ "AWS_ACCESS_KEY_ID"
+
+source :: (MonadIO m, MonadThrow m)
+       => CredentialSource
+       -> m (Region, AccessKey, SecretKey)
+source = \case
+    Explicit region ak sk -> pure (region, ak, sk)
+
+    FromEnv (Just (region, a, s)) -> ensureVars
+        =<< (,,) <$> lookupVar region <*> lookupVar a <*> lookupVar s
+
+    FromEnv Nothing -> do
+        region <- lookupVars [ "AWS_DEFAULT_REGION", "SPACES_DEFAULT_REGION" ]
+        ak <- lookupVars [ "AWS_ACCESS_KEY_ID"
                          , "SPACES_ACCESS_KEY_ID"
                          , "SPACES_ACCESS_KEY"
                          ]
-        sk <- lookupKeys [ "AWS_SECRET_ACCESS_KEY"
+        sk <- lookupVars [ "AWS_SECRET_ACCESS_KEY"
                          , "SPACES_SECRET_ACCESS_KEY"
                          , "SPACES_SECRET_KEY"
                          ]
-        ensureKeys (ak, sk)
+        ensureVars (region, ak, sk)
 
-    source (FromFile fp profile) = do
+    FromFile fp profile -> do
         contents <- LT.toStrict
-            <$> runConduitRes (sourceFile fp .| decodeUtf8C .| sinkLazy)
-        case I.parseIniFile contents parseConf of
-            Left _   ->
-                throwM $ ConfigurationError "Failed to read credentials file"
-            Right ks -> pure
-                $ bimap (coerce . T.encodeUtf8) (coerce . T.encodeUtf8) ks
+            <$> liftIO (runConduitRes (sourceFile fp
+                                       .| decodeUtf8C
+                                       .| sinkLazy))
+        either (throwM . ConfigurationError . T.pack) ensureVars
+            $ I.parseIniFile contents parseConf
       where
         parseConf = I.section (fromMaybe "default" profile)
-            $ (,) <$> I.field "aws_access_key_id"
-            <*> I.field "aws_secret_access_key"
+            $ (,,)
+            <$> (fmap (T.unpack . T.toLower)
+                 <$> I.fieldMb "aws_default_region")
+            <*> (fmap T.unpack <$> I.fieldMb "aws_access_key_id")
+            <*> (fmap T.unpack <$> I.fieldMb "aws_secret_access_key")
+  where
+    lookupVars xs = asum <$> sequence (liftIO . lookupEnv <$> xs)
 
-    throwMissingKeys k = throwM . ConfigurationError $ "Missing " <> k
+    lookupVar     = liftIO . lookupEnv . T.unpack
 
-    lookupKeys xs = asum <$> sequence (lookupEnv <$> xs)
-
-    lookupKey = lookupEnv . T.unpack
-
-    ensureKeys = \case
-        (Just a, Just s) -> pure (mkKey AccessKey a, mkKey SecretKey s)
-        (Just _, _)      -> throwMissingKeys "secret key"
-        (_, Just _)      -> throwMissingKeys "access key"
-        (_, _)           -> throwMissingKeys "secret and access keys"
-
-    mkKey f = f . C.pack
+    ensureVars    = \case
+        (Just r, Just a, Just s) -> do
+            reg <- slugToRegion r
+            pure (reg, coerce $ C.pack a, coerce $ C.pack s)
+        (_, _, _)                -> throwM . ConfigurationError
+            $ "Missing acces/secret keys and/or region"
 
 -- | Upload an 'Object' within a single request
 uploadObject :: MonadSpaces m
@@ -256,20 +263,17 @@ multipartObject contentType bucket object size body
 
     putPart session = go 1
       where
-        go n = await >>= \case
-            Nothing -> pure ()
-            Just v  -> do
-                spaces <- ask
-                etag <- liftIO
-                    $ runSpaces spaces
-                                (runAction NoMetadata
-                                 $ UploadPart session n (RequestBodyLBS v))
-                    <&> (^. field @"result" . field @"etag")
-                yield etag >> go (n + 1)
+        go !n = awaitForever $ \v -> do
+            let pieceBody  = RequestBodyLBS v
+                uploadPart =
+                    runAction NoMetadata $ UploadPart session n pieceBody
+
+            etag <- lift $ uploadPart <&> (^. field @"result" . field @"etag")
+            yield etag >> go (n + 1)
 
     inChunks = loop 0 []
       where
-        loop n chunk = await >>= maybe (yieldChunk chunk) go
+        loop !n chunk = await >>= maybe (yieldChunk chunk) go
           where
             go bs = bool (loop len newChunk)
                          (yieldChunk newChunk >> loop 0 [])
@@ -537,7 +541,4 @@ deleteBucketLifecycleRules bucket =
 -- several actions which may be of use, including sinking remote 'Object' data into
 -- a file, uploading the contents of a file as an 'Object', and recursively listing
 -- the entire contents of a 'Bucket'
---
---
---
 --
