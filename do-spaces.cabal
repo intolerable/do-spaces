@@ -12,12 +12,11 @@ homepage:           https://gitlab.com/ngua/do-spaces-hs
 bug-reports:        https://gitlab.com/ngua/do-spaces-hs/-/issues
 tested-with:        GHC ==8.8.4 || ==8.10.4
 category:           Network
-extra-source-files:
-  README.org
+extra-doc-files:
   CHANGELOG.org
-  tests/data/*.xml
-  io-tests/creds.conf
-  io-tests/creds.conf.skel
+  README.org
+
+extra-source-files: tests/data/*.xml
 
 source-repository head
   type:     git
@@ -27,6 +26,7 @@ common common-options
   ghc-options:
     -Wall -Wcompat -Widentities -Wincomplete-record-updates
     -Wincomplete-uni-patterns -Wpartial-fields -Wredundant-constraints
+    -Wmissing-deriving-strategies
 
 common common-extensions
   default-extensions: OverloadedStrings
