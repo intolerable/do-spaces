@@ -232,7 +232,7 @@ uploadObject contentType bucket object rbody = do
 
 -- | Initiate and complete a multipart upload, using default 'UploadHeaders'.
 -- If a 'SpacesException' is thrown while performing the transaction, an attempt
--- will be made to runSpaces a 'CancelMultipart' request, and the exception will be
+-- will be made to run a 'CancelMultipart' request, and the exception will be
 -- rethrown
 multipartObject
     :: MonadSpaces m
