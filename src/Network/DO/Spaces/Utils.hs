@@ -186,9 +186,9 @@ xmlDocCursor RawResponse { .. } = X.fromDocument
 -- | XML parser for 'Owner' attribute
 ownerP :: MonadThrow m => Cursor Node -> m Owner
 ownerP c = do
-    id' <- X.forceM (xmlElemError "ID")
+    ownerID <- X.forceM (xmlElemError "ID")
         $ c $/ X.laxElement "ID" &/ X.content &| xmlInt @_ @OwnerID
-    pure Owner { displayName = id', id' }
+    pure Owner { displayName = ownerID, ownerID }
 
 -- | XML parser for 'ETag' attribute
 etagP :: MonadThrow m => Cursor Node -> m ETag
@@ -322,7 +322,7 @@ writeACLSetter r = X.renderLBS X.def $ X.Document prologue root mempty
               $ X.Element "Owner"
                           mempty
                           [ mkNode "ID"
-                                   (r ^. field' @"owner" . field @"id'"
+                                   (r ^. field' @"owner" . field @"ownerID"
                                     & coerce @_ @Int
                                     & tshow)
                           ]
@@ -344,7 +344,7 @@ writeACLSetter r = X.renderLBS X.def $ X.Document prologue root mempty
             $ X.Element "Grantee"
                         (granteeAttrs "CanonicalUser")
                         [ mkNode "ID"
-                                 (owner ^. field @"id'"
+                                 (owner ^. field @"ownerID"
                                   & coerce @_ @Int
                                   & tshow)
                         ]

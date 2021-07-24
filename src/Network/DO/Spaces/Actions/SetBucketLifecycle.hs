@@ -52,19 +52,19 @@ instance MonadSpaces m => Action m SetBucketLifecycle where
     buildRequest SetBucketLifecycle { .. } = do
         spaces <- ask
         pure SpacesRequestBuilder
-               { bucket         = Just bucket
-               , method         = Just PUT
-               , object         = Nothing
-               , overrideRegion = Nothing
-               , queryString    = Nothing
-               , headers        = mempty
-               , subresources   = Just
-                     $ H.toQuery [ ( "lifecycle" :: ByteString
-                                   , Nothing :: Maybe ByteString
-                                   )
-                                 ]
-               , ..
-               }
+             { bucket         = Just bucket
+             , method         = Just PUT
+             , object         = Nothing
+             , overrideRegion = Nothing
+             , queryString    = Nothing
+             , headers        = mempty
+             , subresources   = Just
+                   $ H.toQuery [ ( "lifecycle" :: ByteString
+                                 , Nothing :: Maybe ByteString
+                                 )
+                               ]
+             , ..
+             }
       where
         body = Just . RequestBodyLBS . X.renderLBS X.def
             $ X.Document prologue root mempty
@@ -80,7 +80,7 @@ instance MonadSpaces m => Action m SetBucketLifecycle where
         rulesNode LifecycleRule { .. } =
             X.NodeElement $ X.Element "Rule" mempty nodes
           where
-            nodes = [ mkNode "ID" (coerce id')
+            nodes = [ mkNode "ID" (coerce lifecyleID)
                     , mkNode "Status" (showEnabled enabled)
                     ]
                 <> foldMap (pure . mkNode "Prefix") prefix

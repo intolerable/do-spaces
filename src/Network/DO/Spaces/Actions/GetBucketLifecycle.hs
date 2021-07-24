@@ -65,20 +65,20 @@ instance MonadSpaces m => Action m GetBucketLifecycle where
     buildRequest GetBucketLifecycle { .. } = do
         spaces <- ask
         pure SpacesRequestBuilder
-               { bucket         = Just bucket
-               , method         = Nothing
-               , body           = Nothing
-               , object         = Nothing
-               , overrideRegion = Nothing
-               , queryString    = Nothing
-               , headers        = mempty
-               , subresources   = Just
-                     $ H.toQuery [ ( "lifecycle" :: ByteString
-                                   , Nothing :: Maybe ByteString
-                                   )
-                                 ]
-               , ..
-               }
+             { bucket         = Just bucket
+             , method         = Nothing
+             , body           = Nothing
+             , object         = Nothing
+             , overrideRegion = Nothing
+             , queryString    = Nothing
+             , headers        = mempty
+             , subresources   = Just
+                   $ H.toQuery [ ( "lifecycle" :: ByteString
+                                 , Nothing :: Maybe ByteString
+                                 )
+                               ]
+             , ..
+             }
 
     consumeResponse raw = do
         cursor <- xmlDocCursor raw
@@ -87,7 +87,7 @@ instance MonadSpaces m => Action m GetBucketLifecycle where
 
 ruleP :: MonadThrow m => Cursor X.Node -> m LifecycleRule
 ruleP c = do
-    id' <- X.force (xmlElemError "ID")
+    lifecyleID <- X.force (xmlElemError "ID")
         $ c $/ X.laxElement "ID" &/ X.content &| coerce
     enabled <- X.forceM (xmlElemError "Status")
         $ c $/ X.laxElement "Status" &/ X.content &| readStatus

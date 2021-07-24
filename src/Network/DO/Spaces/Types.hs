@@ -274,7 +274,7 @@ data ObjectMetadata = ObjectMetadata
     deriving stock ( Show, Eq, Generic )
 
 -- | The resource owner
-data Owner = Owner { id' :: OwnerID, displayName :: DisplayName }
+data Owner = Owner { ownerID :: OwnerID, displayName :: DisplayName }
     deriving stock ( Show, Eq, Generic )
 
 -- | The ID of an 'Owner'; also serves as a display name in Spaces
@@ -346,7 +346,7 @@ type Days = Word16
 
 -- | Lifecycle configuration for a 'Bucket'
 data LifecycleRule = LifecycleRule
-    { id'             :: LifecycleID
+    { lifecyleID      :: LifecycleID
     , enabled         :: Bool -- ^ The status of the @LifecycleRule@
     , prefix          :: Maybe Text
       -- ^ When specified, only 'Object's which share the prefix will be affected

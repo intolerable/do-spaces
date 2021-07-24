@@ -3,7 +3,6 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeApplications #-}
 
--- |
 module Main where
 
 import           Conduit                   ( sourceLazy, withSourceFile )
@@ -118,8 +117,8 @@ requests = do
 
 testSpaces :: IO Spaces
 testSpaces =
-    newSpaces Singapore
-              (Explicit (AccessKey "II5JDQBAN3JYM4DNEB6C")
+    newSpaces (Explicit Singapore
+                        (AccessKey "II5JDQBAN3JYM4DNEB6C")
                         (SecretKey "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"))
 
 errorResponse :: IO ()
@@ -440,14 +439,14 @@ bucketLifecycle = do
         . it "parses the response correctly"
         $ (rs ^. #rules)
         `shouldBe` [ LifecycleRule
-                     { id'             = LifecycleID "Expire old logs"
+                     { lifecyleID      = LifecycleID "Expire old logs"
                      , enabled         = True
                      , expiration      = Just (AfterDays 90)
                      , prefix          = Just "logs/"
                      , abortIncomplete = Nothing
                      }
                    , LifecycleRule
-                     { id'             =
+                     { lifecyleID      =
                            LifecycleID "Remove uncompleted uploads"
                      , enabled         = True
                      , abortIncomplete = Just 1
