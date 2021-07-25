@@ -55,7 +55,7 @@ library
     , http-client-tls    ^>=0.3
     , http-conduit       ^>=2.3
     , http-types         ^>=0.12
-    , memory             >=0.14 && <0.16
+    , memory             >=0.14 && <0.17
     , microlens          ^>=0.4
     , mime-types         ^>=0.1
     , mtl                >=2.2
@@ -114,7 +114,7 @@ test-suite tests
     , http-conduit      ^>=2.3
     , http-types        ^>=0.12
     , microlens         ^>=0.4
-    , mtl               ^>=2.2
+    , mtl               >=2.2
     , resourcet         ^>=1.2
     , text              ^>=1.2
     , time              >=1.8  && <1.13
