@@ -1,6 +1,6 @@
 cabal-version:      3.0
 name:               do-spaces
-version:            0.1.0
+version:            0.2
 synopsis:           DigitalOcean Spaces API bindings
 description:        See the README at https://gitlab.com/ngua/do-spaces-hs
 license:            BSD-3-Clause

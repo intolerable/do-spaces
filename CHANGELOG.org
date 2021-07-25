@@ -2,7 +2,7 @@
 
 * v0.2
 + ~newSpaces~ no longer directly takes a ~Region~ argument. The region is now instead loaded along with the credentials. See the haddocks for more details
-+ ~Discover~ was added to ~CredentialSource~ to try credential files first, falling back on environent variables
++ ~Discover~ was added to ~CredentialSource~ to try credential files first, falling back on environment variables
 + ~Owner(id')~ was renamed to ~ownerID~, ~LifeCycleRule(id')~ to ~lifecyleID~
 
 * v0.1
