@@ -93,6 +93,6 @@ instance MonadSpaces m => Action m UploadObject where
             <*> (readContentLen =<< lookupHeader' "Content-Length")
         case resp of
             Just r  -> pure r
-            Nothing -> throwM $ OtherError "Missing/malformed headers"
+            Nothing -> throwM $ InvalidResponse "Missing/malformed headers"
       where
         lookupHeader' = lookupHeader raw

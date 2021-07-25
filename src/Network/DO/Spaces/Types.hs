@@ -565,6 +565,7 @@ spsExFromException e = do
 -- | An exception generated within the 'Spaces' client
 data ClientException
     = InvalidRequest Text
+    | InvalidResponse Text
     | InvalidXML Text
     | ConfigurationError Text
       -- | This includes the raw 'Network.HTTP.Types.Response' body, read into a

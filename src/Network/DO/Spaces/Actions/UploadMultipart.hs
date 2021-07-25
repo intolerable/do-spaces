@@ -159,7 +159,7 @@ instance MonadSpaces m => Action m UploadPart where
         runMaybeT (UploadPartResponse
                    <$> (readEtag =<< lookupHeader raw "etag"))
         >>= \case
-            Nothing -> throwM $ OtherError "Missing/malformed headers"
+            Nothing -> throwM $ InvalidResponse "Missing/malformed headers"
             Just r  -> pure r
 
 -- | Complete a multipart session
