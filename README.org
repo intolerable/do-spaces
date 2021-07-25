@@ -9,13 +9,13 @@
    - bucket CORS configuration
 
 * Usage
-~Network.DO.Spaces~ exposes the types and actions requires to make transactions through the Spaces API. The first step is to configure a client by supplying your credentials and a region:
+~Network.DO.Spaces~ exposes the types and actions requires to make transactions through the Spaces API. The first step is to configure a client:
 #+begin_src haskell
 someTransaction = do
-    mySpaces <- newSpaces NewYork (FromFile "~/.spaces-secrets" Nothing)
+    mySpaces <- newSpaces $ FromFile "~/.spaces-secrets" Nothing
     runSpaces mySpaces $ ...
 #+end_src
-There are a few options for supplying your credentials. See ~newSpaces~ in ~Network.DO.Spaces~ for more details.
+There are a few options for supplying your credentials and region. See ~newSpaces~ in ~Network.DO.Spaces~ for more details.
 
 ~Network.DO.Spaces~ exposes several convenience actions for common transactions. These are simple wrappers around instances of the ~Action~ typeclass. Each of the actions must be run via ~runSpaces~ with a ~Spaces~ client configuration. If more granular control is required, especially in the case of actions which take several optional parameters (e.g., ~ListBucket~), you can directly import the ~Action~ instance, construct it, and run it with ~runAction~. These are available from the ~Network.DO.Spaces.Actions~ module.
 
@@ -24,44 +24,32 @@ Each action returns a ~SpacesResponse~ record with two fields. The optional ~met
 A small example:
 
 #+begin_src haskell
-{-# LANGUAGE DataKinds #-}    
-{-# LANGUAGE TypeApplications #-}    
-    
-import Data.Sequence         ( Seq )
-import Data.Generics.Product ( HasField(field) )
+{-# LANGUAGE OverloadedLabels #-}
+{-# LANGUAGE TypeApplications #-}
+
+import Control.Monad.IO.Class
+import Data.Sequence            ( Seq )
+import Data.Generics.Labels     ()
 import Lens.Micro -- or whatever compatible lens library you fancy
 import Network.DO.Spaces
 
-myObjects :: IO (Seq ObjectInfo)
+myObjects :: MonadIO m => m (Seq ObjectInfo)
 myObjects = do
-    -- Load your credentials configuration from environment variables
-    spaces <- newSpaces Singapore (FromEnv Nothing)
-    -- Use the @mkBucket@ smart constructor, which will validate the name you provide
-    -- and ensure it conforms to Spaces API specifications
-    bucket <- mkBucket "my-real-bucket"
+    -- Load your region and credentials by first trying to read from
+    -- $XDG_CONFIG_HOME/do-spaces/credentials or ~/.aws/credentials,
+    -- falling back on environment variables if neither exist
+    spaces <- newSpaces Discover
     -- List the contents of your bucket. @listBucket@ will list all entries until the
     -- Spaces limit of 1,000. There are several variants of this action in
-    -- "Network.DO.Spaces" with different options 
-    response <- runSpaces spaces $ listBucket bucket
+    -- "Network.DO.Spaces" with different options
+    response <- runSpaces spaces $ listBucket =<< mkBucket "my-real-bucket"
     -- See the note about accessing record fields below
-    return $ response ^. field @"result" . field @"objects"
+    pure $ response ^. #result . #objects
 
 #+end_src
 
 ** A note about records
-Many transactions available through the Spaces API feature the same parameters. This necessitates dealing with duplicate fields in records that represent these transactions. For example, nearly every ~Action~ instance has a ~bucket~ field. I am not a fan of certain approaches to dealing with this problem: I am /highly/ averse to using pseudo-Hungarian Notation as record field prefixes, and I do not like using the leading-underscore name mangling approach in lenses. My personal preference is using the ~generic-lens~ package, and the library uses this internally along with ~DuplicateRecordFields~ etc.... There are a few options available when you use this library:
-
-*** Use ~generic-lens~ with ~OverloadedLabels~
-This is my personal preference. Note that I did *not* use the overloaded labels in the library itself, due to the (necessary) orphan ~IsLabel~ instance in ~generic-lens~. If you'd like to see an example of this, refer to the ~io-tests~ directory in this repository.
-
-*** Use ~generic-lens~ with ~field~
-This is the approach that the library uses internally, along with punning and wildcards; requires ~DataKinds~ and ~TypeApplications~ to use ~field~.
-
-*** Use ~getField~
-You can import ~getField~ from ~GHC.Records~ and use that to access record fields. Unfortunately, ~setField~ still hasn't been implemented in GHC.
-
-*** Use the record selectors
-Record selectors can be accessed by importing the relevant module directly, as they are not exported from ~Network.DO.Spaces~. You might want to import different types qualified, due to the aforementioned proliferation of record field duplication.
+Many transactions available through the Spaces API feature the same parameters. This necessitates dealing with duplicate fields in records that represent these transactions. For example, nearly every ~Action~ instance has a ~bucket~ field. I have used ~DuplicateRecordFields~ throughout this library and have chosen not to export field selectors by default. Record selectors can be accessed by importing the relevant module directly, as they are not exported from ~Network.DO.Spaces~. You might want to import different types qualified, due to the aforementioned proliferation of record field duplication. My personal preference is to use the ~generic-lens~ package.
 
 * But why?
 Spaces is nominally compatible with existing Amazon S3 SDKs and clients, so it might seem redundant to create a dedicated client library for the service. DigitalOcean's endpoints and regions are different from Amazon's, however, requiring a stringly-typed region when configuring clients. True to form, Amazon client libraries written in Haskell (e.g., ~Amazonka~) tend to use an ADT to represent regions, precluding their use with Spaces. Furthermore, using an entire Amazon client might be overkill for an application that only requires the s3 functionality, unnecessarily requiring a heavyweight dependency.
