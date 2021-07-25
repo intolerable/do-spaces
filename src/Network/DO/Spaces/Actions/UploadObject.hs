@@ -30,22 +30,7 @@ import qualified Data.CaseInsensitive      as CI
 import           GHC.Generics              ( Generic )
 
 import           Network.DO.Spaces.Types
-                 ( Action(..)
-                 , Bucket
-                 , ClientException(OtherError)
-                 , ETag
-                 , Method(PUT)
-                 , MonadSpaces
-                 , Object
-                 , SpacesRequestBuilder(..)
-                 , UploadHeaders(..)
-                 )
 import           Network.DO.Spaces.Utils
-                 ( lookupHeader
-                 , readContentLen
-                 , readEtag
-                 , renderUploadHeaders
-                 )
 import           Network.HTTP.Conduit      ( RequestBody )
 import           Network.Mime              ( MimeType )
 

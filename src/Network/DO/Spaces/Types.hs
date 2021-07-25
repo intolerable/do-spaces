@@ -61,6 +61,7 @@ module Network.DO.Spaces.Types
     , BodyBS
     , Method(..)
     , Region(..)
+    , RequestID
     , CacheControl
     , ContentDisposition
     , ContentEncoding
@@ -145,6 +146,7 @@ newtype SpacesT m a = SpacesT (ReaderT Spaces m a)
 runSpacesT :: SpacesT m a -> Spaces -> m a
 runSpacesT (SpacesT x) = runReaderT x
 
+-- | A synonym for the constraints necessary to run 'SpacesT' actions
 type MonadSpaces m =
     (MonadReader Spaces m, MonadIO m, MonadUnliftIO m, MonadCatch m)
 
@@ -434,7 +436,7 @@ data Computed (a :: ComputedTag) where
     Credentials :: ByteString -> Computed Cred
     -- | Authorization string containing information about your 'AccessKey' and
     -- your request
-    Authorization :: ByteString -> Computed 'Auth
+    Authorization :: ByteString -> Computed Auth
 
 deriving stock instance Show (Computed a)
 

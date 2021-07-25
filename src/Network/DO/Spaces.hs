@@ -73,14 +73,14 @@ module Network.DO.Spaces
     , Profile
     , CORSRule
     , mkCORSRule
-    , Grant(..)
+    , Grant
     , Grantee(..)
     , Permission(..)
     , LifecycleID
     , mkLifecycleID
     , SpacesException
     , ClientException(..)
-    , APIException(..)
+    , APIException
     ) where
 
 import           Conduit
