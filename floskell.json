@@ -138,7 +138,7 @@
       "infix-app": "try-oneline",
       "if": "try-oneline",
       "import-spec-list": "try-oneline",
-      "con-decls": "try-oneline",
+      "con-decls": "vertical",
       "declaration": "flex",
       "app": "try-oneline",
       "let": "try-oneline",
@@ -148,7 +148,7 @@
       "list-comp": "try-oneline"
     },
     "penalty": {
-      "overfull": 10,
+      "overfull": 1,
       "indent": 1,
       "overfull-once": 200,
       "max-line-length": 79,
