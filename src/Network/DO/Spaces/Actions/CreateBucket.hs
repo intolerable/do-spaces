@@ -50,15 +50,15 @@ instance MonadSpaces m => Action m CreateBucket where
     buildRequest CreateBucket { .. } = do
         spaces <- ask
         pure SpacesRequestBuilder
-               { bucket         = Just bucket
-               , method         = Just PUT
-               , overrideRegion = region
-               , body           = Nothing
-               , object         = Nothing
-               , queryString    = Nothing
-               , subresources   = Nothing
-               , ..
-               }
+             { bucket         = Just bucket
+             , method         = Just PUT
+             , overrideRegion = region
+             , body           = Nothing
+             , object         = Nothing
+             , queryString    = Nothing
+             , subresources   = Nothing
+             , ..
+             }
       where
         headers = catMaybes [ (CI.mk "x-amz-acl", ) . showCannedACL <$> acl ]
 

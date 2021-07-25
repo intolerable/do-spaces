@@ -43,15 +43,15 @@ instance MonadSpaces m => Action m DeleteBucket where
     buildRequest DeleteBucket { .. } = do
         spaces <- ask
         pure SpacesRequestBuilder
-               { method         = Just DELETE
-               , bucket         = Just bucket
-               , body           = Nothing
-               , object         = Nothing
-               , queryString    = Nothing
-               , subresources   = Nothing
-               , headers        = mempty
-               , overrideRegion = Nothing
-               , ..
-               }
+             { method         = Just DELETE
+             , bucket         = Just bucket
+             , body           = Nothing
+             , object         = Nothing
+             , queryString    = Nothing
+             , subresources   = Nothing
+             , headers        = mempty
+             , overrideRegion = Nothing
+             , ..
+             }
 
     consumeResponse _ = pure ()

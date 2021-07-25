@@ -50,19 +50,19 @@ instance MonadSpaces m => Action m SetBucketCORS where
     buildRequest SetBucketCORS { .. } = do
         spaces <- ask
         pure SpacesRequestBuilder
-               { bucket         = Just bucket
-               , method         = Just PUT
-               , object         = Nothing
-               , overrideRegion = Nothing
-               , queryString    = Nothing
-               , headers        = mempty
-               , subresources   = Just
-                     $ H.toQuery [ ( "cors" :: ByteString
-                                   , Nothing :: Maybe ByteString
-                                   )
-                                 ]
-               , ..
-               }
+             { bucket         = Just bucket
+             , method         = Just PUT
+             , object         = Nothing
+             , overrideRegion = Nothing
+             , queryString    = Nothing
+             , headers        = mempty
+             , subresources   = Just
+                   $ H.toQuery [ ( "cors" :: ByteString
+                                 , Nothing :: Maybe ByteString
+                                 )
+                               ]
+             , ..
+             }
       where
         body = Just . RequestBodyLBS . X.renderLBS X.def
             $ X.Document prologue root mempty

@@ -201,7 +201,12 @@ data Region
 
 -- | HTTP request methods, to avoid using @http-client@'s stringly-typed @Method@
 -- synonym
-data Method = GET | POST | PUT | DELETE | HEAD
+data Method
+    = GET
+    | POST
+    | PUT
+    | DELETE
+    | HEAD
     deriving stock ( Show, Eq, Generic, Ord, Read )
 
 -- | The name of a single storage bucket
@@ -331,7 +336,9 @@ data Grant = Grant { permission :: Permission, grantee :: Grantee }
     deriving stock ( Show, Eq, Generic )
 
 -- | Access grant level; Spaces currently only supports these two levels
-data Permission = ReadOnly | FullControl
+data Permission
+    = ReadOnly
+    | FullControl
     deriving stock ( Show, Eq, Generic, Ord )
 
 -- | Information about who an access grant applies to
@@ -363,7 +370,9 @@ data LifecycleRule = LifecycleRule
     deriving stock ( Show, Eq, Generic )
 
 -- | Configuration for automatically deleting expire 'Object's
-data LifecycleExpiration = AfterDays Days | OnDate UTCTime
+data LifecycleExpiration
+    = AfterDays Days
+    | OnDate UTCTime
     deriving stock ( Show, Eq, Generic )
 
 -- | A unique ID for a 'LifecycleRule'
@@ -399,7 +408,12 @@ newtype Canonicalized a = Canonicalized ByteString
     deriving stock ( Show, Eq, Generic )
 
 -- | Different types of computed 'ByteString's
-data ComputedTag = Hash | StrToSign | Sig | Cred | Auth
+data ComputedTag
+    = Hash
+    | StrToSign
+    | Sig
+    | Cred
+    | Auth
     deriving stock ( Show, Eq )
 
 -- | A strict 'ByteString' that has been computed according to some part of
@@ -484,7 +498,9 @@ data SpacesMetadata = SpacesMetadata
     deriving stock ( Show, Eq, Generic )
 
 -- | Whether or not to retain 'SpacesMetadata' when consuming responses
-data WithMetadata = KeepMetadata | NoMetadata
+data WithMetadata
+    = KeepMetadata
+    | NoMetadata
     deriving stock ( Show, Eq, Generic )
 
 -- | A 'ConsumedResponse' with optional 'SpacesMetadata'

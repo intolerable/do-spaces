@@ -49,19 +49,19 @@ instance MonadSpaces m => Action m SetBucketACLs where
     buildRequest sba@SetBucketACLs { .. } = do
         spaces <- ask
         pure SpacesRequestBuilder
-               { bucket         = Just bucket
-               , method         = Just PUT
-               , object         = Nothing
-               , overrideRegion = Nothing
-               , queryString    = Nothing
-               , headers        = mempty
-               , body           = Just . RequestBodyLBS $ writeACLSetter sba
-               , subresources   = Just
-                     $ H.toQuery [ ( "acl" :: ByteString
-                                   , Nothing :: Maybe ByteString
-                                   )
-                                 ]
-               , ..
-               }
+             { bucket         = Just bucket
+             , method         = Just PUT
+             , object         = Nothing
+             , overrideRegion = Nothing
+             , queryString    = Nothing
+             , headers        = mempty
+             , body           = Just . RequestBodyLBS $ writeACLSetter sba
+             , subresources   = Just
+                   $ H.toQuery [ ( "acl" :: ByteString
+                                 , Nothing :: Maybe ByteString
+                                 )
+                               ]
+             , ..
+             }
 
     consumeResponse _ = pure ()

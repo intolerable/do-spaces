@@ -85,8 +85,7 @@ requests = do
                         , "266d2fb56a251205c42c7e0deb7d2e370574cf190f366ecf53179c27697c8e38"
                         ]
 
-    sig                =
-        Signature "3d0da77e916e588d05f0190f8c350eddb47337953897b1e0cfdb44075fd6b2b9"
+    sig                = Signature "3d0da77e916e588d05f0190f8c350eddb47337953897b1e0cfdb44075fd6b2b9"
 
     auth               = Authorization
         $ mconcat [ "AWS4-HMAC-SHA256 Credential="
@@ -439,14 +438,14 @@ bucketLifecycle = do
         . it "parses the response correctly"
         $ (rs ^. #rules)
         `shouldBe` [ LifecycleRule
-                     { lifecycleID      = LifecycleID "Expire old logs"
+                     { lifecycleID     = LifecycleID "Expire old logs"
                      , enabled         = True
                      , expiration      = Just (AfterDays 90)
                      , prefix          = Just "logs/"
                      , abortIncomplete = Nothing
                      }
                    , LifecycleRule
-                     { lifecycleID      =
+                     { lifecycleID     =
                            LifecycleID "Remove uncompleted uploads"
                      , enabled         = True
                      , abortIncomplete = Just 1

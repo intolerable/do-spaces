@@ -44,19 +44,19 @@ instance MonadSpaces m => Action m GetObjectACLs where
     buildRequest GetObjectACLs { .. } = do
         spaces <- ask
         pure SpacesRequestBuilder
-               { bucket         = Just bucket
-               , object         = Just object
-               , method         = Nothing
-               , body           = Nothing
-               , overrideRegion = Nothing
-               , queryString    = Nothing
-               , headers        = mempty
-               , subresources   = Just
-                     $ H.toQuery [ ( "acl" :: ByteString
-                                   , Nothing :: Maybe ByteString
-                                   )
-                                 ]
-               , ..
-               }
+             { bucket         = Just bucket
+             , object         = Just object
+             , method         = Nothing
+             , body           = Nothing
+             , overrideRegion = Nothing
+             , queryString    = Nothing
+             , headers        = mempty
+             , subresources   = Just
+                   $ H.toQuery [ ( "acl" :: ByteString
+                                 , Nothing :: Maybe ByteString
+                                 )
+                               ]
+             , ..
+             }
 
     consumeResponse raw = aclP =<< xmlDocCursor raw

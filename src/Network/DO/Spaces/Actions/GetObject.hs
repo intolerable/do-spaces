@@ -49,16 +49,16 @@ instance MonadSpaces m => Action m GetObject where
     buildRequest GetObject { .. } = do
         spaces <- ask
         pure SpacesRequestBuilder
-               { bucket         = Just bucket
-               , object         = Just object
-               , method         = Nothing
-               , body           = Nothing
-               , queryString    = Nothing
-               , subresources   = Nothing
-               , overrideRegion = Nothing
-               , headers        = mempty
-               , ..
-               }
+             { bucket         = Just bucket
+             , object         = Just object
+             , method         = Nothing
+             , body           = Nothing
+             , queryString    = Nothing
+             , subresources   = Nothing
+             , overrideRegion = Nothing
+             , headers        = mempty
+             , ..
+             }
 
     consumeResponse raw@RawResponse { .. } = GetObjectResponse
         <$> lookupObjectMetadata raw

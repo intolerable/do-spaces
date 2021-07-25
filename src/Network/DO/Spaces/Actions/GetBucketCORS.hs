@@ -59,20 +59,20 @@ instance MonadSpaces m => Action m GetBucketCORS where
     buildRequest GetBucketCORS { .. } = do
         spaces <- ask
         pure SpacesRequestBuilder
-               { bucket         = Just bucket
-               , method         = Nothing
-               , body           = Nothing
-               , object         = Nothing
-               , overrideRegion = Nothing
-               , queryString    = Nothing
-               , headers        = mempty
-               , subresources   = Just
-                     $ H.toQuery [ ( "cors" :: ByteString
-                                   , Nothing :: Maybe ByteString
-                                   )
-                                 ]
-               , ..
-               }
+             { bucket         = Just bucket
+             , method         = Nothing
+             , body           = Nothing
+             , object         = Nothing
+             , overrideRegion = Nothing
+             , queryString    = Nothing
+             , headers        = mempty
+             , subresources   = Just
+                   $ H.toQuery [ ( "cors" :: ByteString
+                                 , Nothing :: Maybe ByteString
+                                 )
+                               ]
+             , ..
+             }
 
     consumeResponse raw = do
         cursor <- xmlDocCursor raw

@@ -57,20 +57,20 @@ instance MonadSpaces m => Action m GetBucketLocation where
     buildRequest GetBucketLocation { .. } = do
         spaces <- ask
         pure SpacesRequestBuilder
-               { bucket         = Just bucket
-               , method         = Nothing
-               , body           = Nothing
-               , object         = Nothing
-               , headers        = mempty
-               , overrideRegion = Nothing
-               , queryString    = Nothing
-               , subresources   = Just
-                     $ H.toQuery [ ( "location" :: ByteString
-                                   , Nothing :: Maybe ByteString
-                                   )
-                                 ]
-               , ..
-               }
+             { bucket         = Just bucket
+             , method         = Nothing
+             , body           = Nothing
+             , object         = Nothing
+             , headers        = mempty
+             , overrideRegion = Nothing
+             , queryString    = Nothing
+             , subresources   = Just
+                   $ H.toQuery [ ( "location" :: ByteString
+                                 , Nothing :: Maybe ByteString
+                                 )
+                               ]
+             , ..
+             }
 
     consumeResponse raw = do
         cursor <- xmlDocCursor raw

@@ -101,19 +101,19 @@ instance MonadSpaces m => Action m BeginMultipart where
     buildRequest BeginMultipart { .. } = do
         spaces <- ask
         pure SpacesRequestBuilder
-               { bucket         = Just bucket
-               , object         = Just object
-               , method         = Just POST
-               , body           = Nothing
-               , overrideRegion = Nothing
-               , queryString    = Nothing
-               , subresources   = Just
-                     $ H.toQuery [ ( "uploads" :: ByteString
-                                   , Nothing :: Maybe ByteString
-                                   )
-                                 ]
-               , ..
-               }
+             { bucket         = Just bucket
+             , object         = Just object
+             , method         = Just POST
+             , body           = Nothing
+             , overrideRegion = Nothing
+             , queryString    = Nothing
+             , subresources   = Just
+                   $ H.toQuery [ ( "uploads" :: ByteString
+                                 , Nothing :: Maybe ByteString
+                                 )
+                               ]
+             , ..
+             }
       where
         headers = maybe id
                         (\ct -> (:) (CI.mk "Content-Type", ct))
@@ -141,19 +141,19 @@ instance MonadSpaces m => Action m UploadPart where
     buildRequest UploadPart { .. } = do
         spaces <- ask
         pure SpacesRequestBuilder
-               { bucket         = session ^? field @"bucket"
-               , object         = session ^? field @"object"
-               , body           = Just body
-               , method         = Just PUT
-               , overrideRegion = Nothing
-               , subresources   = Nothing
-               , headers        = mempty
-               , queryString    = Just
-                     $ H.toQuery [ ("partNumber" :: Text, tshow partNumber)
-                                 , ("uploadId", session ^. field @"uploadID")
-                                 ]
-               , ..
-               }
+             { bucket         = session ^? field @"bucket"
+             , object         = session ^? field @"object"
+             , body           = Just body
+             , method         = Just PUT
+             , overrideRegion = Nothing
+             , subresources   = Nothing
+             , headers        = mempty
+             , queryString    = Just
+                   $ H.toQuery [ ("partNumber" :: Text, tshow partNumber)
+                               , ("uploadId", session ^. field @"uploadID")
+                               ]
+             , ..
+             }
 
     consumeResponse raw =
         runMaybeT (UploadPartResponse
@@ -186,19 +186,19 @@ instance MonadSpaces m => Action m CompleteMultipart where
     buildRequest CompleteMultipart { .. } = do
         spaces <- ask
         pure SpacesRequestBuilder
-               { bucket         = session ^? field @"bucket"
-               , object         = session ^? field @"object"
-               , method         = Just POST
-               , overrideRegion = Nothing
-               , subresources   = Nothing
-               , headers        = mempty
-               , queryString    = Just
-                     $ H.toQuery [ ( "uploadId" :: Text
-                                   , session ^. field @"uploadID"
-                                   )
-                                 ]
-               , ..
-               }
+             { bucket         = session ^? field @"bucket"
+             , object         = session ^? field @"object"
+             , method         = Just POST
+             , overrideRegion = Nothing
+             , subresources   = Nothing
+             , headers        = mempty
+             , queryString    = Just
+                   $ H.toQuery [ ( "uploadId" :: Text
+                                 , session ^. field @"uploadID"
+                                 )
+                               ]
+             , ..
+             }
       where
         body               = Just . RequestBodyLBS . X.renderLBS X.def
             $ X.Document prologue root mempty
@@ -237,20 +237,20 @@ instance MonadSpaces m => Action m CancelMultipart where
     buildRequest CancelMultipart { .. } = do
         spaces <- ask
         pure SpacesRequestBuilder
-               { bucket         = session ^? field @"bucket"
-               , object         = session ^? field @"object"
-               , method         = Just DELETE
-               , body           = Nothing
-               , overrideRegion = Nothing
-               , headers        = mempty
-               , subresources   = Nothing
-               , queryString    = Just
-                     $ H.toQuery [ ( "uploadId" :: Text
-                                   , session ^. field @"uploadID"
-                                   )
-                                 ]
-               , ..
-               }
+             { bucket         = session ^? field @"bucket"
+             , object         = session ^? field @"object"
+             , method         = Just DELETE
+             , body           = Nothing
+             , overrideRegion = Nothing
+             , headers        = mempty
+             , subresources   = Nothing
+             , queryString    = Just
+                   $ H.toQuery [ ( "uploadId" :: Text
+                                 , session ^. field @"uploadID"
+                                 )
+                               ]
+             , ..
+             }
 
     consumeResponse _ = pure ()
 
@@ -279,20 +279,20 @@ instance MonadSpaces m => Action m ListParts where
     buildRequest ListParts { .. } = do
         spaces <- ask
         pure SpacesRequestBuilder
-               { bucket         = session ^? field @"bucket"
-               , object         = session ^? field @"object"
-               , method         = Nothing
-               , body           = Nothing
-               , overrideRegion = Nothing
-               , subresources   = Nothing
-               , headers        = mempty
-               , queryString    = Just
-                     $ H.toQuery [ ( "uploadId" :: Text
-                                   , session ^. field @"uploadID"
-                                   )
-                                 ]
-               , ..
-               }
+             { bucket         = session ^? field @"bucket"
+             , object         = session ^? field @"object"
+             , method         = Nothing
+             , body           = Nothing
+             , overrideRegion = Nothing
+             , subresources   = Nothing
+             , headers        = mempty
+             , queryString    = Just
+                   $ H.toQuery [ ( "uploadId" :: Text
+                                 , session ^. field @"uploadID"
+                                 )
+                               ]
+             , ..
+             }
 
     consumeResponse raw = do
         cursor <- xmlDocCursor raw

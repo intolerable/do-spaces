@@ -42,7 +42,9 @@ import           Network.DO.Spaces.Utils
 
 -- | Whether the 'Object'\'s metadata should be copied or replaced. Replace is
 -- required to copy an object to itself
-data MetadataDirective = Copy | Replace
+data MetadataDirective
+    = Copy
+    | Replace
     deriving stock ( Show, Eq, Generic )
 
 -- | Copy and 'Object' from one 'Bucket' to another. Both buckets must
